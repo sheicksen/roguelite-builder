@@ -24,11 +24,13 @@ class_name Hitbox extends Area2D
 var attack_effects: AttackStats
 var hitbox_lifetime: float
 var shape: Shape2D
+var hit_log: HitLog
 
-func _init(_attack_effects: AttackStats, _hitbox_lifetime: float, _shape: Shape2D) -> void:
+func _init(_attack_effects: AttackStats, _hitbox_lifetime: float, _shape: Shape2D, _hit_log:HitLog = null) -> void:
 	attack_effects = _attack_effects
 	hitbox_lifetime = _hitbox_lifetime
 	shape = _shape
+	hit_log = _hit_log
 	
 func _ready()-> void:
 	monitorable = false	
@@ -43,11 +45,19 @@ func _ready()-> void:
 		var collision_shape = CollisionShape2D.new()
 		collision_shape.shape = shape
 		add_child(collision_shape)
+	
+	## Set numerous affected collision layers
+	for i in attack_effects.targets:
+			set_collision_mask_value(i, true)
 
 func _on_area_entered(target: Area2D) -> void:
 	if not target.has_method("receive_hit"):
 		return
 	
+	var hurtbox_owner = target.owner
+	if hit_log:
+		if hit_log.has_hit(hurtbox_owner):
+			return
 	target.receive_hit(AttackStats)
 	
 	

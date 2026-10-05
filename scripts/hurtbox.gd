@@ -19,6 +19,14 @@ func _ready() -> void:
 		var collision_shape = CollisionShape2D.new()
 		collision_shape.shape = shape
 		add_child(collision_shape)
+		
+	match stats.faction:
+		BaseStats.Faction.PLAYER:
+			set_collision_mask_value(1, true)
+		BaseStats.Faction.ENEMY:
+			set_collision_mask_value(2, true)
+		BaseStats.Faction.ENVIRONMENT:
+			set_collision_mask_value(3, true)
 	
 func recieve_hit(attack:AttackStats) -> void:
 	stats.take_damage(attack.damage)

@@ -1,3 +1,29 @@
 [gd_scene format=3 uid="uid://rbtrn1y2xu3l"]
 
+[ext_resource type="Script" uid="uid://doxk5pxvhmpds" path="res://scripts/character_body_2d.gd" id="1_m4ogu"]
+[ext_resource type="Texture2D" uid="uid://dlwx4nd38cnd3" path="res://icon.svg" id="2_2plog"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qgrd7"]
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_qgrd7"]
+distance = -216.0
+
 [node name="Node2D" type="Node2D" unique_id=1252593510]
+
+[node name="DemoPlayer" type="CharacterBody2D" parent="." unique_id=210029960]
+script = ExtResource("1_m4ogu")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DemoPlayer" unique_id=47048675]
+scale = Vector2(3, 3)
+shape = SubResource("CapsuleShape2D_qgrd7")
+
+[node name="Sprite2D" type="Sprite2D" parent="DemoPlayer" unique_id=2142031513]
+scale = Vector2(0.45, 0.7)
+texture = ExtResource("2_2plog")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=846230255]
+
+[node name="Floor" type="StaticBody2D" parent="." unique_id=1114059516]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=337898903]
+shape = SubResource("WorldBoundaryShape2D_qgrd7")

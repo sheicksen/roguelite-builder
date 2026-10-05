@@ -3,8 +3,9 @@ enum DamageType {
 	DEFAULT
 }
 enum Faction {
-	ENEMY,
+	DEFAULT,
 	PLAYER,
+	ENEMY,
 	ENVIRONMENT
 }
 
