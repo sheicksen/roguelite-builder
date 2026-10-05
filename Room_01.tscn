@@ -2,13 +2,22 @@
 
 [ext_resource type="Script" uid="uid://doxk5pxvhmpds" path="res://scripts/character_body_2d.gd" id="1_m4ogu"]
 [ext_resource type="Texture2D" uid="uid://dlwx4nd38cnd3" path="res://icon.svg" id="2_2plog"]
-
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qgrd7"]
+[ext_resource type="PackedScene" uid="uid://cpmb8c2lts1vn" path="res://scenes/obstacle_demo.tscn" id="3_2plog"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_qgrd7"]
 distance = -216.0
 
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qgrd7"]
+
 [node name="Node2D" type="Node2D" unique_id=1252593510]
+
+[node name="ObstacleDemo" parent="." unique_id=873507336 instance=ExtResource("3_2plog")]
+position = Vector2(-200, 150)
+
+[node name="Floor" type="StaticBody2D" parent="." unique_id=1114059516]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=337898903]
+shape = SubResource("WorldBoundaryShape2D_qgrd7")
 
 [node name="DemoPlayer" type="CharacterBody2D" parent="." unique_id=210029960]
 script = ExtResource("1_m4ogu")
@@ -22,8 +31,3 @@ scale = Vector2(0.45, 0.7)
 texture = ExtResource("2_2plog")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=846230255]
-
-[node name="Floor" type="StaticBody2D" parent="." unique_id=1114059516]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=337898903]
-shape = SubResource("WorldBoundaryShape2D_qgrd7")

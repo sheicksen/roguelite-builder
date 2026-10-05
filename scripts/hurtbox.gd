@@ -11,7 +11,9 @@ func _init(_stats:EntityStats, _lifetime: float, _shape: Shape2D) -> void:
 
 func _ready() -> void:
 	if hurtbox_lifetime > 0.0:
+		print("Timer begun")
 		var timer = Timer.new()
+		add_child(timer)
 		timer.timeout.connect(queue_free)
 		timer.call_deferred("start", hurtbox_lifetime)
 	
@@ -19,15 +21,17 @@ func _ready() -> void:
 		var collision_shape = CollisionShape2D.new()
 		collision_shape.shape = shape
 		add_child(collision_shape)
-		
+	#Disable default collision layers and masks
+	set_collision_mask_value(1, false)
+	set_collision_layer_value(1, false)
 	match stats.faction:
 		BaseStats.Faction.PLAYER:
-			set_collision_mask_value(1, true)
+			set_collision_layer_value(1, true)
 		BaseStats.Faction.ENEMY:
-			set_collision_mask_value(2, true)
+			set_collision_layer_value(2, true)
 		BaseStats.Faction.ENVIRONMENT:
-			set_collision_mask_value(3, true)
+			set_collision_layer_value(3, true)
 	
-func recieve_hit(attack:AttackStats) -> void:
+func receive_hit(attack:AttackStats) -> void:
 	stats.take_damage(attack.damage)
 		

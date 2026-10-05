@@ -37,7 +37,9 @@ func _ready()-> void:
 	area_entered.connect(_on_area_entered)
 	
 	if hitbox_lifetime > 0.0:
+		print("Timer begun")
 		var timer = Timer.new()
+		add_child(timer)
 		timer.timeout.connect(queue_free)
 		timer.call_deferred("start", hitbox_lifetime)
 	
@@ -46,9 +48,14 @@ func _ready()-> void:
 		collision_shape.shape = shape
 		add_child(collision_shape)
 	
+	# Disable default collision layers and masks
+	set_collision_mask_value(1, false)
+	set_collision_layer_value(1, false)
+	
 	## Set numerous affected collision layers
 	for i in attack_effects.targets:
-			set_collision_mask_value(i, true)
+		print("hitbox affects layer: ", i)
+		set_collision_mask_value(i, true)
 
 func _on_area_entered(target: Area2D) -> void:
 	if not target.has_method("receive_hit"):
@@ -58,6 +65,6 @@ func _on_area_entered(target: Area2D) -> void:
 	if hit_log:
 		if hit_log.has_hit(hurtbox_owner):
 			return
-	target.receive_hit(AttackStats)
+	target.receive_hit(attack_effects)
 	
 	

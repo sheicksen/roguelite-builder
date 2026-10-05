@@ -10,6 +10,6 @@ enum Faction {
 }
 
 var faction: int
-
-func _init(_faction: int = 0) -> void:
+var name: String
+func _init(_name:String = "Unknown", _faction: int = 0) -> void:
 	faction = _faction
