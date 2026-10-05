@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://c37th00d7ty6s"]
+
+[ext_resource type="Script" uid="uid://xadvxduq6orw" path="res://player.gd" id="1_3ma0f"]
+[ext_resource type="Script" uid="uid://bpbq2ivungskf" path="res://enemy.gd" id="1_i6dc2"]
+[ext_resource type="PackedScene" uid="uid://bct04les2337v" path="res://components/hitbox.tscn" id="2_by4cx"]
+[ext_resource type="Script" uid="uid://dnx7yg5qc4mi5" path="res://components/hit_effect.gd" id="3_ml5bm"]
+[ext_resource type="PackedScene" uid="uid://c7xrsa5dba3ce" path="res://components/hurtbox.tscn" id="3_u3kpn"]
+
+[sub_resource type="DrawableTexture2D" id="DrawableTexture2D_sqjfq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dpnjg"]
+size = Vector2(64, 64)
+
+[sub_resource type="Resource" id="Resource_l0ypy"]
+script = ExtResource("3_ml5bm")
+property_name = &"move_speed"
+value = 25.0
+metadata/_custom_type_script = "uid://dnx7yg5qc4mi5"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_by4cx"]
+size = Vector2(23.5, 9.75)
+
+[sub_resource type="DrawableTexture2D" id="DrawableTexture2D_vng8p"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_r0i8a"]
+size = Vector2(64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hhtpo"]
+size = Vector2(20, 20.000004)
+
+[node name="Main" type="Node2D" unique_id=970851576]
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=17004082]
+position = Vector2(552, 327)
+script = ExtResource("1_3ma0f")
+
+[node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=545085344]
+texture = SubResource("DrawableTexture2D_sqjfq")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=1980433370]
+shape = SubResource("RectangleShape2D_dpnjg")
+
+[node name="Hitbox" parent="Player" unique_id=1168097939 instance=ExtResource("2_by4cx")]
+scale = Vector2(4, 4)
+damage = 20.0
+team = "player"
+target_teams = Array[String](["enemy"])
+tags = Array[String](["blunt"])
+effects = Array[ExtResource("3_ml5bm")]([SubResource("Resource_l0ypy")])
+
+[node name="CollisionShape2D" parent="Player/Hitbox" index="0" unique_id=653533142]
+shape = SubResource("RectangleShape2D_by4cx")
+
+[node name="Enemy" type="CharacterBody2D" parent="." unique_id=254534038 node_paths=PackedStringArray("target")]
+position = Vector2(133, 326)
+script = ExtResource("1_i6dc2")
+preferred_distance = 150.0
+target = NodePath("../Player")
+
+[node name="Sprite2D" type="Sprite2D" parent="Enemy" unique_id=1020863609]
+texture = SubResource("DrawableTexture2D_vng8p")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Enemy" unique_id=870748215]
+shape = SubResource("RectangleShape2D_r0i8a")
+
+[node name="Hurtbox" parent="Enemy" unique_id=773506683 instance=ExtResource("3_u3kpn")]
+scale = Vector2(3.2, 3.2)
+team = "enemy"
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Enemy/Hurtbox" unique_id=2078987902]
+scale = Vector2(0.9999998, 0.9999998)
+shape = SubResource("RectangleShape2D_hhtpo")
+
+[editable path="Player/Hitbox"]

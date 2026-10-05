@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://bct04les2337v"]
+
+[ext_resource type="Script" uid="uid://cni3mhitgo100" path="res://components/hitbox.gd" id="1_3l28h"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hhtpo"]
+
+[node name="Hitbox" type="Area2D" unique_id=1168097939]
+collision_layer = 2
+collision_mask = 4
+script = ExtResource("1_3l28h")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=653533142]
+shape = SubResource("RectangleShape2D_hhtpo")
