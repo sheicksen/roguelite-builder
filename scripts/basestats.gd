@@ -1,16 +1,14 @@
-class_name BaseStats extends Node
+class_name BaseStats extends Resource
+enum DamageType {
+	DEFAULT
+}
+enum Faction {
+	ENEMY,
+	PLAYER,
+	ENVIRONMENT
+}
 
-var health: int
-var speed: int
+var faction: int
 
-func _init(_health: int, _speed: int) -> void:
-	health = _health
-	speed = _speed
-	
-func _take_damage(_amount: int) -> int:
-	health = health - _amount
-	return health
-	
-func _reduce_speed(_amount: int) -> int:
-	speed = speed - _amount
-	return speed
+func _init(_faction: int = 0) -> void:
+	faction = _faction

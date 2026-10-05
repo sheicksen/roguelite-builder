@@ -21,11 +21,11 @@ class_name Hitbox extends Area2D
 # Damage Type
 # 
 
-var attack_effects: int
+var attack_effects: AttackStats
 var hitbox_lifetime: float
 var shape: Shape2D
 
-func _init(_attack_effects: int, _hitbox_lifetime: float, _shape: Shape2D) -> void:
+func _init(_attack_effects: AttackStats, _hitbox_lifetime: float, _shape: Shape2D) -> void:
 	attack_effects = _attack_effects
 	hitbox_lifetime = _hitbox_lifetime
 	shape = _shape
@@ -44,5 +44,10 @@ func _ready()-> void:
 		collision_shape.shape = shape
 		add_child(collision_shape)
 
-func _on_area_entered() -> void:
-	pass
+func _on_area_entered(target: Area2D) -> void:
+	if not target.has_method("receive_hit"):
+		return
+	
+	target.receive_hit(AttackStats)
+	
+	
