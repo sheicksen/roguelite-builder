@@ -1,4 +1,10 @@
 class_name Hurtbox extends Area2D
+## Handles stat changes to EntityStats upon recieving an AttackStats object.
+##
+## Hurtbox is an Area2D that contains an EntityStats object. When passed an
+## AttackStats object, it handles calling the necessary EntityStats methods to
+## inflict specific damage types and stat changes.
+##
 
 var stats: EntityStats
 var hurtbox_lifetime: float

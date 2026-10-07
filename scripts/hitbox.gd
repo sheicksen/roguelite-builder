@@ -1,30 +1,16 @@
 class_name Hitbox extends Area2D
+## Detects target Hurtbox. Inflicts stat changes determined by its AttackStats object on overlap.
+##
+## Hitbox is a 2D region that triggers stat changes on overlap with **Hurtbox**.
+## Useful for enemies, abilities, and obstacles that inflict slowness, damage, etc. to anything
+## with a Hurtbox.
+## Target layer(s) and stats are determined by the AttackStats passed into _attack_effects
+##
 
-## Blueprint:
-# Can be used for obstacles
-# Can be used for attacks
-# Can be used for enemy/player bodies
-# Not a collider, but should match size of collider for obstacles, enemies, etc.
-# Should be able to affect any, and numerous stats 
-
-## Stats Array/Objects
-# [ Attack, Shield Break, Slowness, Damage Type]
-#            |
-#            v
-# [ Health, Shield, Speed, Vulnerability ]
-
-## Hurtbox should report what damage type has collided with it to parent
-## in order to execute special functions, such as explosives
-
-# Stats:
-# Player/Monster/Ability/Obstacle: attack
-# Damage Type
-# 
-
-var attack_effects: AttackStats
-var hitbox_lifetime: float
-var shape: Shape2D
-var hit_log: HitLog
+var attack_effects: AttackStats ## Determines target Hurtbox layers and stat changes
+var hitbox_lifetime: float ## Seconds until hitbox is freed. Hitbox is permanent if = 0.0
+var shape: Shape2D ## Shape of the Hitbox
+var hit_log: HitLog ## (Optional) Hitlog. Prevents Hitbox from repeat interactions with Hurtbox.
 
 func _init(_attack_effects: AttackStats, _hitbox_lifetime: float, _shape: Shape2D, _hit_log:HitLog = null) -> void:
 	attack_effects = _attack_effects
