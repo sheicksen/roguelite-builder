@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://b7wjyw5dktcyk"]
+
+[ext_resource type="Script" uid="uid://crbcqvfkgpdfw" path="res://scenes/player.gd" id="1_p0vlq"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qgrd7"]
+
+[node name="Player" type="Node2D" unique_id=1054769552]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=466662357]
+script = ExtResource("1_p0vlq")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=589505251]
+shape = SubResource("CapsuleShape2D_qgrd7")
+
+[node name="Camera2D" type="Camera2D" parent="CharacterBody2D" unique_id=1277918642]

@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dyvrv5tg3bye8"]
+
+[ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_rrvei"]
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
+distance = -330.0
+
+[node name="TestroomPc" type="Node2D" unique_id=1034884043]
+
+[node name="Node2D" parent="." unique_id=1054769552 instance=ExtResource("1_rrvei")]
+position = Vector2(17, 133)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=527295866]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=515061019]
+shape = SubResource("WorldBoundaryShape2D_8fbn1")
