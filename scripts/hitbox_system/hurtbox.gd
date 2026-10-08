@@ -17,7 +17,6 @@ func _init(_stats:EntityStats, _lifetime: float, _shape: Shape2D) -> void:
 
 func _ready() -> void:
 	if hurtbox_lifetime > 0.0:
-		print("Timer begun")
 		var timer = Timer.new()
 		add_child(timer)
 		timer.timeout.connect(queue_free)

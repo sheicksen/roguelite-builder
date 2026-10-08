@@ -23,7 +23,6 @@ func _ready()-> void:
 	area_entered.connect(_on_area_entered)
 	
 	if hitbox_lifetime > 0.0:
-		print("Timer begun")
 		var timer = Timer.new()
 		add_child(timer)
 		timer.timeout.connect(queue_free)
@@ -40,7 +39,6 @@ func _ready()-> void:
 	
 	## Set numerous affected collision layers
 	for i in attack_effects.targets:
-		print("hitbox affects layer: ", i)
 		set_collision_mask_value(i, true)
 
 func _on_area_entered(target: Area2D) -> void:

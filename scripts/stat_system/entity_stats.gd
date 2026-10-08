@@ -40,14 +40,9 @@ func _init(
 		max_health = _health
 	
 func take_damage(amount: int) -> int:
-	print(name, " is in faction ", faction)
-	print("Default faction is: ", Faction.DEFAULT)
-	print(name, "'s Current Health: ", health)
 	health = health - clamp(amount - defense, 0, max_health)
 	if health < 0:
 		health = 0
-	print(name, " -'Ouch!' -", amount)
-	print("Health Remaining: ", health)
 	return health
 	
 func reduce_speed(amount: int) -> int:
