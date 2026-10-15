@@ -6,14 +6,21 @@ class_name Hurtbox extends Area2D
 ## inflict specific damage types and stat changes.
 ##
 
+signal health_changed(old_val, new_val)
+
 var stats: EntityStats
 var hurtbox_lifetime: float
 var shape: Shape2D
+var destroy_on_death: bool
+var emit_signal: bool
 
-func _init(_stats:EntityStats, _lifetime: float, _shape: Shape2D) -> void:
+func _init(_stats:EntityStats, _lifetime: float, _shape: Shape2D, _destroy_on_death: bool = false, _emit_signal: bool = false) -> void:
 	stats = _stats
 	hurtbox_lifetime = _lifetime
 	shape = _shape
+	destroy_on_death = _destroy_on_death
+	emit_signal = _emit_signal
+	
 
 func _ready() -> void:
 	if hurtbox_lifetime > 0.0:
@@ -38,5 +45,13 @@ func _ready() -> void:
 			set_collision_layer_value(3, true)
 	
 func receive_hit(attack:AttackStats) -> void:
+	var old_health = stats.health
 	stats.take_damage(attack.damage)
+	if emit_signal:
+		health_changed.emit(old_health, stats.health)
+		
+	if stats.health <= 0 and destroy_on_death:
+		queue_free()
+
+
 		
