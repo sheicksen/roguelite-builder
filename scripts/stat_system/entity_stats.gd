@@ -51,7 +51,7 @@ func take_damage(amount: int) -> int:
 func heal(amount: int) -> int:
 	health = health + amount
 	if health > max_health:
-		health == max_health
+		health = max_health
 	return health
 
 func modify_max_health(new_max:int)->int:
@@ -110,13 +110,13 @@ func remove_effect(old_effect: int) -> Array[int]:
 	return under_effects
 	
 func clear_effects() -> void:
-	for i in len(under_effects):
-		under_effects.remove_at(i)
+	under_effects.clear()
 		
 func update_defense(new_defense: int) -> int:
 	defense = new_defense
+	if defense < 0:
+		defense = 0
 	return defense
-	
 
 func deal_attack_damage(attack:AttackStats) -> int:
 	var damage: int = attack.damage
@@ -125,5 +125,5 @@ func deal_attack_damage(attack:AttackStats) -> int:
 		
 	if vulnerability.has(attack.damage_type):
 		damage = damage * 2
-	
+	take_damage(damage)
 	return damage
