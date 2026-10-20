@@ -10,7 +10,8 @@ func after_each():
 	gut.p("Removing Entity reference")
 	_entity = null
 	assert_no_new_orphans()
-	
+
+## Basic health modifications
 func test_take_damage():
 	gut.p("Taking 50 damage with No Defense")
 	_entity.take_damage(50)
@@ -23,6 +24,31 @@ func test_take_damage_with_defense():
 	gut.p("Taking 50 damage with 10 Defense")
 	_entity.take_damage(50)
 	assert_eq(_entity.health, 60, "Health should be 60")
+
+func test_negative_damage():
+	gut.p("Pass illegal negative damage value")
+	_entity.take_damage(-10)
+	assert_push_error("Cannot do negative damage.")
+	
+func test_heal():
+	gut.p("Take 90 damage")
+	_entity.take_damage(90)
+	assert_eq(_entity.health, 10, "Entity took 90 damage, should have 10 HP remaining")
+	gut.p("Heal 50hp")
+	_entity.heal(50)
+	assert_eq(_entity.health, 60, "Entity should have 60 HP after healing for 50")
+	
+func test_over_heal():
+	gut.p("Take 30 damage")
+	_entity.take_damage(30)
+	gut.p("Heal 50hp")
+	_entity.heal(50)
+	assert_eq(_entity.health, _entity.max_health, "Entity should be at max hp")
+
+func test_negative_heal():
+	gut.p("Pass illegal healing amount: -10")
+	_entity.heal(-10)
+	assert_push_error("Cannot heal a negative amount of health.")
 	
 ## VULNERABILITY TESTS
 func test_add_vulnerability():
@@ -80,7 +106,8 @@ func test_immunity_to_damage():
 	var poison_attack: AttackStats = AttackStats.new(10, BaseStats.DamageType.POISON, [0])
 	gut.p("Adding Poison Immunity")
 	_entity.add_immunity(BaseStats.DamageType.POISON)
-	_entity.deal_attack_damage(poison_attack)
+	var damage_taken = _entity.deal_attack_damage(poison_attack)
+	assert_eq(damage_taken, 0, "Entity should have taken 0 damage")
 	gut.p("Deal poison attack damage to entity")
 	assert_eq(_entity.health, _entity.max_health, "Entity should still be at max health")
 	

@@ -43,18 +43,27 @@ func _init(
 		max_health = _health
 	
 func take_damage(amount: int) -> int:
+	if(amount < 0):
+		push_error("Cannot do negative damage.")
+		return health
 	health = health - clamp(amount - defense, 0, max_health)
 	if health < 0:
 		health = 0
 	return health
 
 func heal(amount: int) -> int:
+	if amount < 0:
+		push_error("Cannot heal a negative amount of health.")
+		return health
 	health = health + amount
 	if health > max_health:
 		health = max_health
 	return health
 
 func modify_max_health(new_max:int)->int:
+	if new_max <= 0:
+		push_error("Maximum health cannot be at or below zero.")
+		return max_health
 	max_health = new_max
 	if health > max_health:
 		health = max_health
@@ -111,7 +120,7 @@ func remove_effect(old_effect: int) -> Array[int]:
 	
 func clear_effects() -> void:
 	under_effects.clear()
-		
+
 func update_defense(new_defense: int) -> int:
 	defense = new_defense
 	if defense < 0:
