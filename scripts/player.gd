@@ -32,6 +32,7 @@ var air_friction: int = 0
 
 # Visuals
 @onready var player_sprite: AnimatedSprite2D = $AnimatedSprite2D
+@onready var camera: Camera2D = $Camera2D
 
 func _init(
 	_name: String = "Player",
@@ -96,7 +97,14 @@ func _physics_process(delta: float) -> void:
 		player_sprite.play("jump")
 
 	move_and_slide()
-	
+
+var offset: int = 0
+func _process(delta: float) -> void:
+	if Input.is_action_pressed("look_down"):
+		if camera.offset.y < 100:
+			camera.offset.y += 5
+	elif camera.offset.y > 0:
+		camera.offset.y -= 5
 	
 func disable_jump() -> void:
 	# print("Jump disabled")

@@ -117,9 +117,17 @@ script = ExtResource("1_p0vlq")
 shape = SubResource("CapsuleShape2D_qgrd7")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1277918642]
+offset = Vector2(0, -50)
+zoom = Vector2(2, 2)
+limit_enabled = false
+position_smoothing_enabled = true
+drag_horizontal_enabled = true
+drag_vertical_enabled = true
+drag_vertical_offset = -1.0
+editor_draw_drag_margin = true
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=800157378]
 scale = Vector2(0.1, 0.1)
 sprite_frames = SubResource("SpriteFrames_qgrd7")
 animation = &"idle"
-frame_progress = 0.8812292
+frame_progress = 0.7803173
