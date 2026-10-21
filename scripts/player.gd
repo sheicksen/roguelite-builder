@@ -1,10 +1,11 @@
 class_name Player extends CharacterBody2D
 
-# Default Values
+# Default values used
 const SPEED = 300.0
-const JUMP_VELOCITY = -450.0
+const JUMP_VELOCITY = -400.0
+const AIR_FRICTION = 150.0
 const FRICTION = 0
-const JUMP_LENIENCY = 0.1
+const JUMP_LENIENCY = 0.2
 
 # Player specific stats
 var stats: EntityStats # Passed into hurtbox
@@ -25,8 +26,9 @@ var jump_timer: Timer
 var jumps_made: int = 0
 
 # Movement feel
-var jump_height: int
-var friction: int
+var jump_height: int = JUMP_VELOCITY
+var friction: int = 0
+var air_friction: int = 0
 
 func _init(
 	_name: String = "Player",
@@ -35,10 +37,8 @@ func _init(
 	_speed: int = 300,
 	_stamina: int = 100,
 	_abilities: Array = [],
-	_jump_height: int = -400
 	
 ) -> void:
-	jump_height = JUMP_VELOCITY
 	friction = FRICTION
 	stats = EntityStats.new(_name, _faction, _health, _speed)
 	jump_timer = Timer.new()
@@ -52,27 +52,32 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	# Add the gravity.
 	if is_on_floor():
+		air_friction = 0
 		if not can_jump:
 			can_jump = true
 		jumps_made = 0
 		
 	if not is_on_floor():
+		if velocity.x == 0:
+			air_friction = AIR_FRICTION
 		velocity += get_gravity() * delta
 		if jump_timer.get_time_left() <= 0.0 and jumps_made == 0:
+			# print("Timer started")
 			jump_timer.call_deferred("start", JUMP_LENIENCY)
 		
 	# Handle jump.
 	if Input.is_action_just_pressed("jump") and can_jump:
 		if jumps_made < num_jumps:
+			# print("Jump made")
 			jumps_made += 1
 			velocity.y = jump_height
 
 	# Get the input direction and handle the movement/deceleration.
 	var direction := Input.get_axis("move_left", "move_right")
 	if direction:
-		velocity.x = direction * hurtbox.stats.speed
+		velocity.x = direction * (hurtbox.stats.speed - air_friction)
 	else:
-		velocity.x = move_toward(velocity.x, 0, hurtbox.stats.speed)
+		velocity.x = move_toward(velocity.x, 0, hurtbox.stats.speed - air_friction)
 
 	move_and_slide()
 
