@@ -19,7 +19,7 @@ var hurtbox: Hurtbox
 var abilities: Array
 
 
-## Jump handling.
+# Jump handling.
 var can_jump: bool = true
 var num_jumps: int = 1
 var jump_timer: Timer
@@ -29,6 +29,9 @@ var jumps_made: int = 0
 var jump_height: int = JUMP_VELOCITY
 var friction: int = 0
 var air_friction: int = 0
+
+# Visuals
+@onready var player_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 func _init(
 	_name: String = "Player",
@@ -75,12 +78,26 @@ func _physics_process(delta: float) -> void:
 	# Get the input direction and handle the movement/deceleration.
 	var direction := Input.get_axis("move_left", "move_right")
 	if direction:
+		if direction > 0:
+			player_sprite.flip_h = true
+		else:
+			player_sprite.flip_h = false
+			
 		velocity.x = direction * (hurtbox.stats.speed - air_friction)
 	else:
 		velocity.x = move_toward(velocity.x, 0, hurtbox.stats.speed - air_friction)
+	
+	if is_on_floor():
+		if velocity.x != 0:
+			player_sprite.play("walk")
+		else:
+			player_sprite.play("idle")
+	else:
+		player_sprite.play("jump")
 
 	move_and_slide()
-
+	
+	
 func disable_jump() -> void:
 	# print("Jump disabled")
 	if jumps_made >= num_jumps - 1:
