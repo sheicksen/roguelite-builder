@@ -4,7 +4,6 @@ class_name Player extends CharacterBody2D
 const SPEED = 300.0
 const JUMP_VELOCITY = -400.0
 const AIR_FRICTION = 150.0
-const FRICTION = 0
 const JUMP_LENIENCY = 0.2
 
 # Player specific stats
@@ -27,8 +26,11 @@ var jumps_made: int = 0
 
 # Movement feel
 var jump_height: int = JUMP_VELOCITY
-var friction: int = 0
 var air_friction: int = 0
+
+var sprint_boost: int       # Amount speed is increased by when sprinting
+var sprinting = false       # Tracks if the character is currently sprinting
+var current_speed: int      # manages current speed (stats.speed + speed boost)
 
 # Visuals
 @onready var player_sprite: AnimatedSprite2D = $AnimatedSprite2D
@@ -39,28 +41,39 @@ func _init(
 	_faction: int = 1,
 	_health: int = 100,
 	_speed: int = 300,
+	_sprint_boost: int = 200,
 	_stamina: int = 100,
 	_abilities: Array = [],
 	
 ) -> void:
-	friction = FRICTION
+	sprint_boost = _sprint_boost
+	current_speed = _speed
 	stats = EntityStats.new(_name, _faction, _health, _speed)
 	jump_timer = Timer.new()
 	jump_timer.set_one_shot(true)
 	add_child(jump_timer)
 	jump_timer.timeout.connect(disable_jump)
+	
+	stats.speed_changed.connect(update_speed)
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $CollisionShape2D.shape)
 
 func _physics_process(delta: float) -> void:
-	# Add the gravity.
+	
+	# Enable jumping and sprinting if character is in contact with the floor
 	if is_on_floor():
 		air_friction = 0
 		if not can_jump:
 			can_jump = true
 		jumps_made = 0
 		
+		if Input.is_action_just_pressed("sprint"):
+			sprint()
+		if Input.is_action_just_released("sprint"):
+			end_sprint()
+		
+	# Handle falling, jump forgiveness, and apply air friction
 	if not is_on_floor():
 		if velocity.x == 0:
 			air_friction = AIR_FRICTION
@@ -84,9 +97,9 @@ func _physics_process(delta: float) -> void:
 		else:
 			player_sprite.flip_h = false
 			
-		velocity.x = direction * (hurtbox.stats.speed - air_friction)
+		velocity.x = direction * (current_speed - air_friction)
 	else:
-		velocity.x = move_toward(velocity.x, 0, hurtbox.stats.speed - air_friction)
+		velocity.x = move_toward(velocity.x, 0, current_speed - air_friction)
 	
 	if is_on_floor():
 		if velocity.x != 0:
@@ -99,7 +112,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 var offset: int = 0
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if Input.is_action_pressed("look_down"):
 		if camera.offset.y < 100:
 			camera.offset.y += 5
@@ -107,7 +120,6 @@ func _process(delta: float) -> void:
 		camera.offset.y -= 5
 	
 func disable_jump() -> void:
-	# print("Jump disabled")
 	if jumps_made >= num_jumps - 1:
 		can_jump = false
 
@@ -117,3 +129,23 @@ func add_jump(amount:int) -> int:
 		return -1
 	num_jumps += amount
 	return num_jumps
+
+func sprint() -> void:
+	if not sprinting:
+		sprinting = true
+		player_sprite.speed_scale = 3.0
+		current_speed = stats.speed + sprint_boost
+
+func end_sprint() -> void:
+	if sprinting:
+		sprinting = false
+		player_sprite.speed_scale = 1.0
+		current_speed = stats.speed
+
+func update_speed() -> int:
+	if sprinting:
+		current_speed = stats.speed + sprint_boost
+	else:
+		current_speed = stats.speed
+	return current_speed
+	

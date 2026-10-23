@@ -130,4 +130,5 @@ editor_draw_drag_margin = true
 scale = Vector2(0.1, 0.1)
 sprite_frames = SubResource("SpriteFrames_qgrd7")
 animation = &"idle"
-frame_progress = 0.7803173
+frame = 1
+frame_progress = 0.40540978
