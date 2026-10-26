@@ -11,7 +11,7 @@ size = Vector2(145, 20)
 [node name="TestroomPc" type="Node2D" unique_id=1034884043]
 
 [node name="Node2D" parent="." unique_id=1054769552 instance=ExtResource("1_rrvei")]
-position = Vector2(133, 253)
+position = Vector2(133, 261)
 
 [node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=527295866]
 
@@ -44,4 +44,10 @@ position = Vector2(646, -78)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_04" unique_id=1817315629]
 position = Vector2(-34, 294)
+shape = SubResource("RectangleShape2D_qgrd7")
+
+[node name="Platform_05" type="StaticBody2D" parent="." unique_id=89966037]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_05" unique_id=1930686440]
+position = Vector2(130, 492)
 shape = SubResource("RectangleShape2D_qgrd7")

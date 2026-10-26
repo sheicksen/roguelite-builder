@@ -32,6 +32,7 @@ var sprint_boost: int       # Amount speed is increased by when sprinting
 var sprinting = false       # Tracks if the character is currently sprinting
 var current_speed: int      # manages current speed (stats.speed + speed boost)
 
+var crouching: bool = false
 # Visuals
 @onready var player_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var camera: Camera2D = $Camera2D
@@ -57,7 +58,7 @@ func _init(
 	stats.speed_changed.connect(update_speed)
 
 func _ready() -> void:
-	hurtbox = Hurtbox.new(stats, 0, $CollisionShape2D.shape)
+	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
 
 func _physics_process(delta: float) -> void:
 	
@@ -89,6 +90,9 @@ func _physics_process(delta: float) -> void:
 			jumps_made += 1
 			velocity.y = jump_height
 
+	if Input.is_action_just_pressed("crouch"):
+		toggle_crouch.call_deferred()
+		
 	# Get the input direction and handle the movement/deceleration.
 	var direction := Input.get_axis("move_left", "move_right")
 	if direction:
@@ -113,7 +117,7 @@ func _physics_process(delta: float) -> void:
 
 var offset: int = 0
 func _process(_delta: float) -> void:
-	if Input.is_action_pressed("look_down"):
+	if Input.is_action_pressed("look_down") and is_on_floor():
 		if camera.offset.y < 100:
 			camera.offset.y += 5
 	elif camera.offset.y > 0:
@@ -148,4 +152,12 @@ func update_speed() -> int:
 	else:
 		current_speed = stats.speed
 	return current_speed
+	
+func toggle_crouch() -> void:
+	if crouching and not $RoofCheckRay.is_colliding():
+		crouching = false
+		$PlayerCollider.scale.y = 1
+	else:
+		crouching = true
+		$PlayerCollider.scale.y = 0.5
 	
