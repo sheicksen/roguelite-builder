@@ -8,10 +8,10 @@ const JUMP_LENIENCY = 0.2
 
 # Player specific stats
 var stats: EntityStats # Passed into hurtbox
-var health_recovery: float
-var max_stamina: int 
-var stamina: int
-var stamina_recovery: float
+var health_recovery: float = 0
+var max_stamina: int = 100
+var stamina: float = 100
+var stamina_recovery: float = 0.05
 
 # Player's Children
 var hurtbox: Hurtbox
@@ -61,7 +61,10 @@ func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
 
 func _physics_process(delta: float) -> void:
-	
+	if sprinting:
+		drain_stamina.call_deferred()
+	else:
+		regain_stamina.call_deferred()
 	# Enable jumping and sprinting if character is in contact with the floor
 	if is_on_floor():
 		air_friction = 0
@@ -70,8 +73,10 @@ func _physics_process(delta: float) -> void:
 		jumps_made = 0
 		
 		if Input.is_action_just_pressed("sprint"):
-			sprint()
-		if Input.is_action_just_released("sprint"):
+			if stamina > 0:
+				sprint()
+		if Input.is_action_just_released("sprint") or stamina <= 0:
+			print("Sprint ended")
 			end_sprint()
 		
 	# Handle falling, jump forgiveness, and apply air friction
@@ -152,6 +157,20 @@ func update_speed() -> int:
 	else:
 		current_speed = stats.speed
 	return current_speed
+	
+func drain_stamina() -> float:
+	var new_stamina = stamina - 0.2
+	if new_stamina < 0:
+		new_stamina = 0
+	stamina = new_stamina
+	return stamina
+
+func regain_stamina() -> float:
+	var new_stamina = stamina + stamina_recovery
+	if new_stamina >= max_stamina:
+		new_stamina = max_stamina
+	stamina = new_stamina
+	return stamina
 	
 func toggle_crouch() -> void:
 	if crouching and not $RoofCheckRay.is_colliding():
