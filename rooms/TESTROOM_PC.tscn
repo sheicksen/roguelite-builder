@@ -1,0 +1,53 @@
+[gd_scene format=3 uid="uid://dyvrv5tg3bye8"]
+
+[ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_rrvei"]
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
+distance = -330.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qgrd7"]
+size = Vector2(145, 20)
+
+[node name="TestroomPc" type="Node2D" unique_id=1034884043]
+
+[node name="Node2D" parent="." unique_id=1054769552 instance=ExtResource("1_rrvei")]
+position = Vector2(133, 261)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=527295866]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=515061019]
+position = Vector2(6, 213)
+shape = SubResource("WorldBoundaryShape2D_8fbn1")
+
+[node name="Platform_01" type="StaticBody2D" parent="." unique_id=1851136027]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_01" unique_id=662802517]
+position = Vector2(136, 303)
+shape = SubResource("RectangleShape2D_qgrd7")
+
+[node name="Platform_02" type="StaticBody2D" parent="." unique_id=1987704888]
+position = Vector2(255, -3)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_02" unique_id=207054555]
+position = Vector2(136, 303)
+shape = SubResource("RectangleShape2D_qgrd7")
+
+[node name="Platform_03" type="StaticBody2D" parent="." unique_id=1205451627]
+position = Vector2(510, -6)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_03" unique_id=928760756]
+position = Vector2(-34, 266)
+shape = SubResource("RectangleShape2D_qgrd7")
+
+[node name="Platform_04" type="StaticBody2D" parent="." unique_id=1990447079]
+position = Vector2(646, -78)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_04" unique_id=1817315629]
+position = Vector2(-34, 294)
+shape = SubResource("RectangleShape2D_qgrd7")
+
+[node name="Platform_05" type="StaticBody2D" parent="." unique_id=89966037]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform_05" unique_id=1930686440]
+position = Vector2(130, 492)
+shape = SubResource("RectangleShape2D_qgrd7")
