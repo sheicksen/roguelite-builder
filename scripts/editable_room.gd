@@ -34,20 +34,31 @@ var selected_terrain: int = 0
 @onready var destructible_terrain: TileMapLayer = $DestructibleTerrain
 @onready var hidden_passages: TileMapLayer = $HiddenPassages
 
+# --- Constants ---
+
+const ROOM_FILE_PATH: String = "user://editable_room.json"
+const ROOM_FORMAT_VERSION: int = 1
+const EDITOR_TEST_DAMAGE: int = 25
+
 # Stores the remaining health of each destructible cell.
 var _destructible_health: Dictionary = {}
 
 # Keeps track of the Area2D associated with each tile.
 var _destructible_hurtboxes: Dictionary = {}
 
+## Terrain types available in the level editor.
+enum TerrainType {
+	SOLID,
+	PLATFORM,
+	DESTRUCTIBLE,
+	HIDDEN_PASSAGE
+}
 
 # --- Solid Terrain ---
 
-## Places a solid tile and removes any platform at that cell.
+## Places a solid tile, replacing any existing terrain.
 func place_solid_tile(cell: Vector2i) -> void:
-	remove_hidden_passage_tile(cell)
-	remove_destructible_tile(cell)
-	platforms.erase_cell(cell)
+	remove_tile(cell)
 
 	solid_terrain.set_cell(
 		cell,
@@ -66,11 +77,9 @@ func has_solid_tile(cell: Vector2i) -> bool:
 
 # --- Semi-Solid Platforms ---
 
-## Places a one-way platform using the alternative tile.
+## Places a one-way platform, replacing existing terrain.
 func place_platform_tile(cell: Vector2i) -> void:
-	remove_hidden_passage_tile(cell)
-	remove_destructible_tile(cell)
-	solid_terrain.erase_cell(cell)
+	remove_tile(cell)
 
 	platforms.set_cell(
 		cell,
@@ -98,13 +107,48 @@ func remove_tile(cell: Vector2i) -> void:
 	remove_hidden_passage_tile(cell)
 
 
-## Handles placing and removing terrain with the mouse.
+
+## Paints, removes, or damages terrain at the mouse position.
+func _edit_tile_at_mouse(button: int) -> void:
+	var mouse_position: Vector2 = solid_terrain.get_local_mouse_position()
+	var cell: Vector2i = solid_terrain.local_to_map(mouse_position)
+
+	match button:
+		MOUSE_BUTTON_LEFT:
+			match selected_terrain:
+				TerrainType.SOLID:
+					if not has_solid_tile(cell):
+						place_solid_tile(cell)
+
+				TerrainType.PLATFORM:
+					if not has_platform_tile(cell):
+						place_platform_tile(cell)
+
+				TerrainType.DESTRUCTIBLE:
+					if not has_destructible_tile(cell):
+						place_destructible_tile(cell)
+
+				TerrainType.HIDDEN_PASSAGE:
+					if not has_hidden_passage_tile(cell):
+						place_hidden_passage_tile(cell)
+
+		MOUSE_BUTTON_RIGHT:
+			remove_tile(cell)
+
+		MOUSE_BUTTON_MIDDLE:
+			damage_destructible_at_position(
+			get_global_mouse_position(),
+			EDITOR_TEST_DAMAGE
+		)
+
+
+
+## Handles keyboard shortcuts and mouse terrain editing.
 func _unhandled_input(event: InputEvent) -> void:
 	if not edit_mode:
 		return
 
-
-	# Keyboard shortcuts for saving and loading.
+	# Save and load shortcuts.
 	if event is InputEventKey:
 		if event.pressed and not event.echo:
 			match event.keycode:
@@ -116,31 +160,18 @@ func _unhandled_input(event: InputEvent) -> void:
 					load_room()
 					return
 
-	if event is InputEventMouseButton and event.pressed:
-		var mouse_position: Vector2 = solid_terrain.get_local_mouse_position()
-		var cell: Vector2i = solid_terrain.local_to_map(mouse_position)
+	# Handle individual mouse clicks.
+	if event is InputEventMouseButton:
+		if event.pressed:
+			_edit_tile_at_mouse(event.button_index)
 
-		match event.button_index:
-			MOUSE_BUTTON_LEFT:
-				match selected_terrain:
-					0:
-						place_solid_tile(cell)
-					1:
-						place_platform_tile(cell)
-					2:
-						place_destructible_tile(cell)
-					3:
-						place_hidden_passage_tile(cell)
+	# Handle mouse movement while a button is held.
+	elif event is InputEventMouseMotion:
+		if (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			_edit_tile_at_mouse(MOUSE_BUTTON_LEFT)
 
-
-			MOUSE_BUTTON_RIGHT:
-				remove_tile(cell)
-
-			MOUSE_BUTTON_MIDDLE:
-				damage_destructible_at_position(
-					get_global_mouse_position(),
-					25
-				)
+		elif (event.button_mask & MOUSE_BUTTON_MASK_RIGHT) != 0:
+			_edit_tile_at_mouse(MOUSE_BUTTON_RIGHT)
 
 
 # --- Destructible Terrain ---
@@ -157,7 +188,8 @@ func place_destructible_tile(cell: Vector2i) -> void:
 
 	_destructible_health[cell] = destructible_max_health
 
-	# Create a hurtbox that can receive attacks.
+	# Each destructible cell needs its own hurtbox so attacks
+	# can damage individual tiles instead of the entire layer.
 	var hurtbox := TerrainHurtbox.new()
 
 	hurtbox.configure(
@@ -285,7 +317,7 @@ func get_room_data() -> Dictionary:
 		tile["health"] = get_destructible_health(cell)
 
 	return {
-		"version": 1,
+		"version": ROOM_FORMAT_VERSION,
 		"solid": _serialize_layer(solid_terrain),
 		"platform": _serialize_layer(platforms),
 		"destructible": destructibles,
@@ -296,7 +328,7 @@ func get_room_data() -> Dictionary:
 func save_room() -> bool:
 	var path := "user://editable_room.json"
 
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	var file := FileAccess.open(ROOM_FILE_PATH, FileAccess.WRITE)
 
 	if file == null:
 		push_error(
@@ -313,7 +345,8 @@ func save_room() -> bool:
 	return true
 
 
-## Recreates tiles from their saved data.
+## Restores tiles using saved TileSet information.
+## Destructible cells must also recreate their health and hurtboxes.
 func _restore_layer(layer: TileMapLayer, tiles: Array) -> void:
 	for entry in tiles:
 		if not entry is Dictionary:
@@ -355,7 +388,7 @@ func _restore_layer(layer: TileMapLayer, tiles: Array) -> void:
 ## Replaces the current terrain with saved room data.
 func load_room_data(data: Dictionary) -> bool:
 	# Verify the file format before modifying the room.
-	if int(data.get("version", -1)) != 1:
+	if int(data.get("version", -1)) != ROOM_FORMAT_VERSION:
 		push_warning("Unsupported room file version.")
 		return false
 

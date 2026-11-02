@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://seomdq5nluk4" path="res://scripts/editable_room.gd" id="1_3utn5"]
 [ext_resource type="Texture2D" uid="uid://dlwx4nd38cnd3" path="res://icon.svg" id="1_7ukgc"]
+[ext_resource type="Script" uid="uid://bhjgui4be4wrm" path="res://scripts/terrain_editor_ui.gd" id="3_jd0ck"]
+[ext_resource type="Script" uid="uid://bjllbgn2nw3kx" path="res://scenes/tile_preview.gd" id="3_wwqfs"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3utn5"]
 texture = ExtResource("1_7ukgc")
@@ -28,8 +30,10 @@ edit_mode = true
 selected_terrain = 2
 
 [node name="SolidTerrain" type="TileMapLayer" parent="." unique_id=1983141028]
-tile_map_data = PackedByteArray(0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 tile_set = SubResource("TileSet_gb0uo")
+
+[node name="TilePreview" type="Node2D" parent="SolidTerrain" unique_id=504492705]
+script = ExtResource("3_wwqfs")
 
 [node name="Platforms" type="TileMapLayer" parent="." unique_id=787413604]
 tile_set = SubResource("TileSet_gb0uo")
@@ -38,12 +42,31 @@ tile_set = SubResource("TileSet_gb0uo")
 tile_set = SubResource("TileSet_gb0uo")
 
 [node name="HiddenPassages" type="TileMapLayer" parent="." unique_id=1471916439]
-tile_map_data = PackedByteArray(0, 0, 5, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 tile_set = SubResource("TileSet_gb0uo")
 collision_enabled = false
 navigation_enabled = false
 
+[node name="EditorUI" type="CanvasLayer" parent="." unique_id=22790464]
+script = ExtResource("3_jd0ck")
+
+[node name="PanelContainer" type="PanelContainer" parent="EditorUI" unique_id=1178616313]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 121.0
+offset_bottom = 56.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="EditorUI/PanelContainer" unique_id=1309135787]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="EditorUI/PanelContainer/HBoxContainer" unique_id=328982771]
+layout_mode = 2
+text = "Terrain:"
+
+[node name="TerrainSelector" type="OptionButton" parent="EditorUI/PanelContainer/HBoxContainer" unique_id=1770155374]
+layout_mode = 2
+
 [node name="TerrainTester" type="RigidBody2D" parent="." unique_id=1783319760]
+visible = false
 position = Vector2(577, 74)
 linear_velocity = Vector2(0, -700)
 
