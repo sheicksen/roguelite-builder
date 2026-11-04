@@ -21,12 +21,12 @@ func use_ability(user:Node, facing:int) -> void:
 		cooldown_timer.call_deferred("start", data.cool_down)
 
 func spawn_hitboxes(user:Node, facing:int) -> void:
+	var hitlog: HitLog 
+	if data.hitlog:
+		hitlog = HitLog.new() # Create hitlog if necessary
 	for i in range(data.hitbox_count):
 		print("Spawning hitbox: ", i)
 		var hitbox_shape: Shape2D # Initiate variable for hitbox shape
-		var hitlog: HitLog 
-		if data.hitlog:
-			hitlog = HitLog.new() # Create hitlog if necessary
 		if data.shape == "Circle": # Create shape of hitbox with size specified in Data
 			hitbox_shape = CircleShape2D.new()
 			hitbox_shape.radius = data.hitbox_scale
