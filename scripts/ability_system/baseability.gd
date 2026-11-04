@@ -13,6 +13,9 @@ var stats: AttackStats
 var hitbox: Hitbox
 var icon: String
 
+var is_ready: bool
+var cool_down: float
+
 func _init(
 	_name:String, 
 	_icon:String, 
