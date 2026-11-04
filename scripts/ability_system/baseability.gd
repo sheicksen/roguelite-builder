@@ -1,4 +1,4 @@
-class_name BaseAbility extends Node
+class_name Ability extends Node
 
 var stats: AttackStats
 var icon: String       # Path to Icon
