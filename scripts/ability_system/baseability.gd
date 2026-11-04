@@ -36,7 +36,8 @@ func spawn_hitboxes(user:Node, facing:int) -> void:
 			
 		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog, data.emit_signal)
 		hitbox.name = name + str(i)
-		hitbox.position = (data.hitbox_offsets[i]*facing)
+		hitbox.position = data.hitbox_offsets[i]
+		hitbox.position.x = hitbox.position.x * facing
 		user.add_child(hitbox)
 
 func reset_cooldown() -> void:
