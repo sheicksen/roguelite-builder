@@ -1,6 +1,6 @@
-class_name ranged_ability extends Ability
+class_name RangedAbility extends Ability
 
-func spawn_hitboxes(user:Node, facing:int) -> void:
+func spawn_hitboxes(_user:Node, facing:int) -> void:
 	var hitlog: HitLog 
 	if data.hitlog:
 		hitlog = HitLog.new() # Create hitlog if necessary
@@ -15,8 +15,7 @@ func spawn_hitboxes(user:Node, facing:int) -> void:
 			hitbox_shape.size = data.scale
 			
 		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog, data.emit_signal)
-		hitbox.name = name + str(i)
-		hitbox.position = data.hitbox_offsets[i]
-		hitbox.position.x = hitbox.position.x * facing
-		var projectile
-		get_tree().current_scene.add_child(hitbox)
+		var projectile = Projectile.new(data.attack_sprite, hitbox, 300, facing, data.attack_sprite_scale)
+		projectile.position.y = _user.position.y + data.hitbox_offsets[i].y
+		projectile.position.x = _user.position.x + (data.hitbox_offsets[i].x * facing)
+		get_tree().current_scene.add_child(projectile)

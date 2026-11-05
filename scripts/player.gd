@@ -61,6 +61,9 @@ func _init(
 	var new_ability = Ability.new("Knife")
 	add_child(new_ability)
 	abilities.append(new_ability)
+	var second_ability = RangedAbility.new("Gun")
+	add_child(second_ability)
+	abilities.append(second_ability)
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
@@ -120,6 +123,8 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("ability_1"):
 		print("Ability 1 pressed")
 		abilities[0].use_ability(self, facing)
+	if Input.is_action_just_pressed("ability_2"):
+		abilities[1].use_ability(self, facing)
 
 	if is_on_floor():
 		if velocity.x != 0:
