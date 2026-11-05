@@ -5,14 +5,13 @@ class_name RoomGen extends RefCounted
 
 func generate_room(data: RoomData) -> Node2D:
 ## if the data is null or invalid
-    if data == null:
-    push_error("room gen requires room data")
-    return null
-
-    if not _validate_definition(data):
-        return null
-
-    var room := Node2D.new()
+	if data == null:
+		push_error("room gen requires room data")
+		return null
+	if not _validate_definition(data):
+		return null
+		
+	var room := Node2D.new()
 	room.name = "GeneratedRoom"
 	room.set_meta("room_size_cells", room_size_cells)
 	room.set_meta("cell_size", cell_size)
@@ -28,7 +27,7 @@ func generate_room(data: RoomData) -> Node2D:
 	_spawn_entries(data, data.obstacle_spawns, obstacles_root, "obstacle")
 
 	var player := _instantiate_at_cell(
-        data,
+		data,
 		data.player_scene,
 		data.player_spawn_cell,
 		room,

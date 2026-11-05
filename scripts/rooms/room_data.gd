@@ -23,20 +23,19 @@ class_name RoomData extends Resource
 
 ## checks to see if the exit is open
 func is_exit_open(exit_index: int) -> bool:
-    if not _is_valid_exit_index(exit_index):
+	if not _is_valid_exit_index(exit_index):
 		return false
 	return bool(exits[exit_index].get("is_open", false))
 
- ## updates exit state
- func set_exit_open(exit_index: int, is_open: bool) -> bool:
-    if not _is_valid_exit_index(exit_index):
-        return false
-
-    var exit_data: Dictionary = exits[exit_index]
-    exit_data["is_open"] = is_open
-    exits[exit_index] = exit_data
-
-    return true
+## updates exit state
+func set_exit_open(exit_index: int, is_open: bool) -> bool:
+	if not _is_valid_exit_index(exit_index):
+		return false
+		
+		var exit_data: Dictionary = exits[exit_index]
+		exit_data["is_open"] = is_open
+		exits[exit_index] = exit_data
+	return true
 
 func _is_valid_exit_index(exit_index: int) -> bool:
 	if exit_index < 0 or exit_index >= exits.size():
