@@ -5,6 +5,7 @@ class_name AbilityData extends Resource
 @export var icon: String = "res://icon.svg"
 @export var cool_down: float = 1.0
 @export var shape: String = "Circle"
+@export var corrupted: bool = false
 
 @export var hitbox_scale = 10
 @export var hitbox_lifespan: float = 0.5
