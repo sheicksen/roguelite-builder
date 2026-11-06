@@ -15,7 +15,7 @@ var stamina_recovery: float = 0.05
 
 # Player's Children
 var hurtbox: Hurtbox
-var abilities: Array
+var abilities: Array[Ability] = []
 
 
 # Jump handling.
@@ -33,6 +33,7 @@ var sprinting = false       # Tracks if the character is currently sprinting
 var current_speed: int      # manages current speed (stats.speed + speed boost)
 
 var crouching: bool = false
+var facing: int = 1
 # Visuals
 @onready var player_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var camera: Camera2D = $Camera2D
@@ -56,6 +57,17 @@ func _init(
 	jump_timer.timeout.connect(disable_jump)
 	
 	stats.speed_changed.connect(update_speed)
+	
+	var new_ability = Ability.new("Knife", KnifeConfig.new())
+	add_child(new_ability)
+	abilities.append(new_ability)
+	var second_ability = RangedAbility.new("Gun", PoisonGunConfig.new())
+	add_child(second_ability)
+	abilities.append(second_ability)
+	
+	var third_ability = Ability.new("Sword", SwordConfig.new())
+	add_child(third_ability)
+	abilities.append(third_ability)
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
@@ -103,13 +115,23 @@ func _physics_process(delta: float) -> void:
 	if direction:
 		if direction > 0:
 			player_sprite.flip_h = true
+			facing = 1
 		else:
+			facing = -1
 			player_sprite.flip_h = false
 			
 		velocity.x = direction * (current_speed - air_friction)
 	else:
 		velocity.x = move_toward(velocity.x, 0, current_speed - air_friction)
 	
+	if Input.is_action_just_pressed("ability_1"):
+		print("Ability 1 pressed")
+		abilities[0].use_ability(self, facing)
+	if Input.is_action_just_pressed("ability_2"):
+		abilities[1].use_ability(self, facing)
+	if Input.is_action_just_pressed("ability_3"):
+		abilities[2].use_ability(self, facing)
+
 	if is_on_floor():
 		if velocity.x != 0:
 			player_sprite.play("walk")
@@ -127,6 +149,7 @@ func _process(_delta: float) -> void:
 			camera.offset.y += 5
 	elif camera.offset.y > 0:
 		camera.offset.y -= 5
+	
 	
 func disable_jump() -> void:
 	if jumps_made >= num_jumps - 1:
@@ -179,4 +202,4 @@ func toggle_crouch() -> void:
 	else:
 		crouching = true
 		$PlayerCollider.scale.y = 0.5
-	
+		

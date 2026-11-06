@@ -55,9 +55,10 @@ func _on_area_entered(target: Area2D) -> void:
 	if hit_log:
 		if hit_log.has_hit(hurtbox_owner):
 			return
+		hit_log.log_hit(hurtbox_owner)
+	target.receive_hit(attack_effects)
 	if emit_signal:
 		hit_made.emit(owner, target)
-	target.receive_hit(attack_effects)
 
 
 	
