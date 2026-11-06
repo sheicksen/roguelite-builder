@@ -5,7 +5,7 @@ func _init() -> void:
 	icon = ""
 	
 	sprite = "jab"
-	sprite_scale = Vector2(0.3, 0.3)
+	sprite_scale = Vector2(1, 1)
 	sprite_rotation = 0.0
 	sprite_offset = Vector2(40, 0)
 
