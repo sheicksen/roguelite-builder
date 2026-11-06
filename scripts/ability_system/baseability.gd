@@ -1,12 +1,14 @@
 class_name Ability extends Node
-var data:AbilityData = AbilityData.new()
+var data:AbilityData
 var cooldown_timer: Timer
 var is_ready: bool = true
 
 func _init(
-	_name:String, 
+	_name:String,
+	_ability_data:AbilityData
 	) -> void:
 	name = _name
+	data = _ability_data
 	cooldown_timer = Timer.new()
 	add_child(cooldown_timer)
 	cooldown_timer.one_shot = true
@@ -15,7 +17,6 @@ func _init(
 
 func use_ability(user:Node, facing:int) -> void:
 	if is_ready:
-		print("Ability used")
 		is_ready = false
 		spawn_hitboxes(user, facing)
 		cooldown_timer.call_deferred("start", data.cool_down)
@@ -25,22 +26,20 @@ func spawn_hitboxes(user:Node, facing:int) -> void:
 	if data.hitlog:
 		hitlog = HitLog.new() # Create hitlog if necessary
 	for i in range(data.hitbox_count):
-		print("Spawning hitbox: ", i)
 		var hitbox_shape: Shape2D # Initiate variable for hitbox shape
 		if data.shape == "Circle": # Create shape of hitbox with size specified in Data
 			hitbox_shape = CircleShape2D.new()
 			hitbox_shape.radius = data.hitbox_scale
 		elif data.shape == "Rectangle":
 			hitbox_shape = RectangleShape2D.new()
-			hitbox_shape.size = data.scale
+			hitbox_shape.size = data.hitbox_scale
 			
 		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog)
 		hitbox.name = name + str(i)
 		hitbox.position = data.hitbox_offsets[i]
 		hitbox.position.x = hitbox.position.x * facing
-		user.add_child(hitbox)
+		user.add_child(hitbox)	
 
 func reset_cooldown() -> void:
-	print("Ability cooled down")
 	cooldown_timer.stop()
 	is_ready = true

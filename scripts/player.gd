@@ -58,10 +58,10 @@ func _init(
 	
 	stats.speed_changed.connect(update_speed)
 	
-	var new_ability = Ability.new("Knife")
+	var new_ability = Ability.new("Knife", KnifeConfig.new())
 	add_child(new_ability)
 	abilities.append(new_ability)
-	var second_ability = RangedAbility.new("Gun")
+	var second_ability = RangedAbility.new("Gun", PoisonGunConfig.new())
 	add_child(second_ability)
 	abilities.append(second_ability)
 

@@ -13,8 +13,8 @@ func _init() -> void:
 	corrupted = false
 	
 	shape = "Rectangle"
-	hitbox_scale = Vector2(9, 3)
-	hitbox_lifespan = 3.0
+	hitbox_scale = Vector2(15, 5)
+	hitbox_lifespan = 0.8
 	hitbox_count = 1
 	hitlog = true
-	hitbox_offsets = [Vector2(10, 0)]
+	hitbox_offsets = [Vector2(20, 0)]
