@@ -16,6 +16,7 @@ func _init(_config:AbilityData, _hitbox:Hitbox, _direction:int  = 1) -> void:
 	if _direction < 1:
 		sprite.flip_h = true
 	add_child(sprite)
+	sprite.z_index = 4
 	hitbox = _hitbox
 	hitbox.emit_signal = true
 	if not config.piercing:
