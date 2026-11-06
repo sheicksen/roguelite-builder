@@ -15,7 +15,7 @@ func spawn_hitboxes(_user:Node, facing:int) -> void:
 			hitbox_shape.size = data.scale
 			
 		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog, data.emit_signal)
-		var projectile = Projectile.new(data.attack_sprite, hitbox, 300, facing, data.attack_sprite_scale)
+		var projectile = Projectile.new(data.attack_sprite, hitbox, 700, facing, data.attack_sprite_scale)
 		projectile.position.y = _user.position.y + data.hitbox_offsets[i].y
 		projectile.position.x = _user.position.x + (data.hitbox_offsets[i].x * facing)
 		get_tree().current_scene.add_child(projectile)
