@@ -38,7 +38,8 @@ func spawn_hitboxes(user:Node, facing:int) -> void:
 		hitbox.name = name + str(i)
 		hitbox.position = data.hitbox_offsets[i]
 		hitbox.position.x = hitbox.position.x * facing
-		user.add_child(hitbox)	
+		var melee = Melee.new(data, hitbox, facing)
+		user.add_child(melee)	
 
 func reset_cooldown() -> void:
 	cooldown_timer.stop()

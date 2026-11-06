@@ -11,6 +11,7 @@ class_name AbilityData extends Resource
 @export var cool_down: float = 1.0
 @export var shape: String = "Circle"
 @export var corrupted: bool = false
+@export var piercing: bool = true
 
 @export var hitbox_scale = 7
 @export var hitbox_lifespan: float = 3.0
