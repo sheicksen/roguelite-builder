@@ -34,7 +34,7 @@ func spawn_hitboxes(user:Node, facing:int) -> void:
 			hitbox_shape = RectangleShape2D.new()
 			hitbox_shape.size = data.scale
 			
-		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog, data.emit_signal)
+		var hitbox = Hitbox.new(data.stats, data.hitbox_lifespan, hitbox_shape, hitlog)
 		hitbox.name = name + str(i)
 		hitbox.position = data.hitbox_offsets[i]
 		hitbox.position.x = hitbox.position.x * facing

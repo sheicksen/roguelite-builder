@@ -16,4 +16,5 @@ class_name AbilityData extends Resource
 @export var hitbox_lifespan: float = 3.0
 @export var hitbox_count: int = 1
 @export var hitlog: bool = true
+@export var do_emit_signal = false
 @export var hitbox_offsets: Array[Vector2] = [Vector2(10, 0)]
