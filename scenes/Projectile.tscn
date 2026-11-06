@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://4mcs22kmi4ky"]
+
+[ext_resource type="Script" uid="uid://dd1uju28qddjq" path="res://scripts/ability_system/projectile.gd" id="1_vihyi"]
+[ext_resource type="SpriteFrames" uid="uid://bu6e5vh7s4xqq" path="res://assets/ability_sprite_frames.tres" id="2_vihyi"]
+
+[node name="Projectile" type="Node2D" unique_id=398641645]
+script = ExtResource("1_vihyi")
+
+[node name="projectile_sprite" type="AnimatedSprite2D" parent="." unique_id=977006211]
+sprite_frames = ExtResource("2_vihyi")
+animation = &"fire_ball"
