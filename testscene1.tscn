@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://balsnbhee2yln"]
+
+[ext_resource type="Script" uid="uid://su4aqeka6icj" path="res://character_body_2d.gd" id="1_0tr4k"]
+[ext_resource type="Script" uid="uid://c0rytok5vxf0f" path="res://scripts/obstacles_system/obstacles.gd" id="2_5jg7e"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qf02t"]
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_qf02t"]
+
+[node name="Node2D" type="Node2D" unique_id=1857536103]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=1158024270]
+script = ExtResource("1_0tr4k")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=597463997]
+position = Vector2(-16, -20)
+shape = SubResource("CapsuleShape2D_qf02t")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=588934804]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=42236324]
+shape = SubResource("WorldBoundaryShape2D_qf02t")
+
+[node name="Obstacle" type="Node2D" parent="." unique_id=359395324]
+position = Vector2(9, -22)
+scale = Vector2(95.22147, 10.195859)
+script = ExtResource("2_5jg7e")
+metadata/_custom_type_script = "uid://c0rytok5vxf0f"
