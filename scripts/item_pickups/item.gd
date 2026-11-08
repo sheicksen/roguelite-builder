@@ -5,6 +5,7 @@ class_name Item extends Resource
 @export var name: String
 @export var target_stats: Array[String]
 @export var amounts: Array[int]
+@export var corruption: int
 
 var allowed_stats = [ # list of stats that could be changed in EntityStats
 	"max_health", 
@@ -17,7 +18,7 @@ var allowed_stats = [ # list of stats that could be changed in EntityStats
 	"under_effects"
 ]
 
-func _init(_name:String, _target_stats:Array[String], _change_amounts: Array[int]) -> void:
+func _init(_name:String, _target_stats:Array[String], _change_amounts: Array[int], _corruption:int = 0) -> void:
 	for stat in _target_stats: # Check that there are no illegal, game breaking target stats
 		if not stat in allowed_stats:
 			push_error("Cannot target stat which does not exist")
@@ -25,5 +26,6 @@ func _init(_name:String, _target_stats:Array[String], _change_amounts: Array[int
 	name = _name
 	target_stats = _target_stats
 	amounts = _change_amounts
+	corruption = _corruption
 	
 	

@@ -1,12 +1,12 @@
 class_name Inventory extends Resource
 @export var coins: int = 0
 @export var corruption: int = 0
-@export var pickups: Array = []
+@export var pickups: Array[Item] = []
 @export var ability_1: String = ""
 @export var ability_2: String = ""
 @export var ability_3: String = ""
 
-var owner:Node2D
+var owner: Node2D
 
 func _init(_owner:Node2D) -> void:
 	if "stats" in _owner:
