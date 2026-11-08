@@ -4,7 +4,7 @@ class_name Projectile extends Node2D
 @export var hitbox: Hitbox
 @export var config: ProjectileData
 @export var direction: int
-@export var y_velocity: int
+@export var y_velocity: float
 var sprite: AnimatedSprite2D
 
 var valid_sprites = ["laser", "big_slash", "jab", "medium_slash", "poison_ball", "fire_ball"]

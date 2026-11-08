@@ -51,7 +51,7 @@ func _on_area_entered(target: Area2D) -> void:
 	if not target.has_method("receive_hit"):
 		return
 	
-	var hurtbox_owner = target.owner
+	var hurtbox_owner = target.get_parent()
 	if hit_log:
 		if hit_log.has_hit(hurtbox_owner):
 			return
