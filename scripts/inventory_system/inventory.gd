@@ -2,9 +2,9 @@ class_name Inventory extends Resource
 @export var coins: int = 0
 @export var corruption: int = 0
 @export var pickups: Array[Item] = []
-@export var ability_1: String = ""
-@export var ability_2: String = ""
-@export var ability_3: String = ""
+@export var ability_1: AbilityData
+@export var ability_2: AbilityData
+@export var ability_3: AbilityData
 
 var owner_stats: EntityStats
 
