@@ -7,6 +7,7 @@ const AIR_FRICTION = 150.0
 const JUMP_LENIENCY = 0.2
 
 # Player specific stats
+var inventory: Inventory = Inventory.new(self)
 var stats: EntityStats # Passed into hurtbox
 var health_recovery: float = 0
 var max_stamina: int = 100
