@@ -17,9 +17,6 @@ func _init(_owner:Node2D) -> void:
 func add_item(item:Item)->void:
 	pickups.append(item)
 	for i in item.target_stats.size():
-		if item.target_stats[i] == "health":
-			owner_stats.heal(item.amounts[i])
-		else:
 			modify_stat(item.target_stats[i], item.amounts[i])
 
 func remove_item(item_name: String) -> void:
@@ -40,8 +37,12 @@ func modify_stat(target, amount):
 			owner_stats.modify_speed(amount)
 		"weight":
 			owner_stats.update_weight(owner_stats.weight + amount)
-	
-	if target == "immunity":
+	if target == "health":
+		if amount < 0:
+			owner_stats.take_damage(amount*-1)
+		else:
+			owner_stats.heal(amount)
+	elif target == "immunity":
 		if amount < 1:
 			owner_stats.remove_immunity(amount * -1)
 		else:

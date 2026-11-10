@@ -24,3 +24,10 @@ func test_health_item():
 	assert_has(_player.inventory.pickups, health_item)
 	assert_eq(_player.stats.health, 100, "Player should be at 100 hp after acquiring potion")
 	
+func test_damaging_item():
+	gut.p("Create item that damages health")
+	var poison_item = Item.new("Poison Potion", ["health"], [-20])
+	_player.inventory.add_item(poison_item)
+	assert_has(_player.inventory.pickups, poison_item)
+	assert_eq(_player.stats.health, 80, "Player should be at 80 hp after acquiring potion")
+	
