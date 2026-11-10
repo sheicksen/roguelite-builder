@@ -37,9 +37,10 @@ func modify_stat(target, amount):
 			owner_stats.modify_speed(amount)
 		"weight":
 			owner_stats.update_weight(owner_stats.weight + amount)
+	
 	if target == "health":
 		if amount < 0:
-			owner_stats.take_damage(amount*-1)
+			owner_stats.take_damage(amount * -1)
 		else:
 			owner_stats.heal(amount)
 	elif target == "immunity":
