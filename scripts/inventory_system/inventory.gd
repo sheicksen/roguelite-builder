@@ -58,3 +58,38 @@ func assign_ability_2(ability_data:AbilityData) -> void:
 
 func assign_ability_3(ability_data:AbilityData) -> void:
 	ability_3 = ability_data
+
+func gain_coins(amount: int) -> int:
+	if amount < 0:
+		push_error("Cannot gain negative amount of coins.")
+		return -1
+	coins += amount
+	return coins
+
+func spend_coins(amount: int) -> int:
+	if amount < 0:
+		push_error("Cannot spend negative amount of coins.")
+		return -1
+	
+	coins -= amount
+	if coins < 0:
+		coins = 0
+	return coins
+
+func gain_corruption(amount: int) -> int:
+	if amount < 0: 
+		push_error("Cannot gain negative corruption")
+		return -1
+	
+	corruption += amount
+	return corruption
+	
+func reduce_corruption(amount: int) -> int:
+	if amount < 0: 
+		push_error("Cannpt reduce by negative corruption.")
+		return -1
+	
+	corruption -= amount
+	if corruption < 0:
+		corruption = 0
+	return corruption
