@@ -59,6 +59,11 @@ func _init(
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
+	hurtbox.name = "Hurtbox"
+	add_child(hurtbox)
+
+	# Allow enemy AI to locate the player.
+	add_to_group("player")
 
 func _physics_process(delta: float) -> void:
 	if sprinting:

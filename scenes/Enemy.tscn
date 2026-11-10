@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://kwq487vly70s"]
 
-[ext_resource type="Script" uid="uid://cuetfyfy2se5g" path="res://scripts/base_enemy.gd" id="1_3gvst"]
+[ext_resource type="Script" uid="uid://bfoirrpi6oy8a" path="res://scripts/ai/melee_chaser.gd" id="1_3gvst"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hhtpo"]
 size = Vector2(32, 32)
