@@ -2,9 +2,9 @@ class_name Inventory extends Resource
 @export var coins: int = 0
 @export var corruption: int = 0
 @export var pickups: Array[Item] = []
-@export var ability_1: AbilityData
-@export var ability_2: AbilityData
-@export var ability_3: AbilityData
+@export var ability_1: AbilityData = NullAbilityConfig.new()
+@export var ability_2: AbilityData = NullAbilityConfig.new()
+@export var ability_3: AbilityData = NullAbilityConfig.new()
 
 var owner_stats: EntityStats
 
@@ -49,3 +49,12 @@ func modify_stat(target, amount):
 			owner_stats.remove_vulnerability(amount * -1)
 		else:
 			owner_stats.add_vulnerability(amount)
+
+func assign_ability_1(ability_data:AbilityData) -> void:
+	ability_1 = ability_data
+
+func assign_ability_2(ability_data:AbilityData) -> void:
+	ability_2 = ability_data
+
+func assign_ability_3(ability_data:AbilityData) -> void:
+	ability_3 = ability_data

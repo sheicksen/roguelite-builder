@@ -27,3 +27,5 @@ func _init() -> void:
 	gravity = 950
 	y_velocity = -200
 	piercing = false
+	
+	description = "A medium-ranged projectile based attack. Spew a glob of poison in the air that arcs down upon your enemies."

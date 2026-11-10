@@ -18,3 +18,5 @@ func _init() -> void:
 	hitbox_count = 3
 	hitlog = true
 	hitbox_offsets = [Vector2(30, 0), Vector2(40, -20), Vector2(40, -40)]
+	
+	description = "A medium ranged melee attack. Split your enemies clean through for heavy damage."

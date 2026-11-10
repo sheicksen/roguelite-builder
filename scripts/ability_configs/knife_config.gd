@@ -18,3 +18,5 @@ func _init() -> void:
 	hitbox_count = 1
 	hitlog = true
 	hitbox_offsets = [Vector2(30, 0)]
+	
+	description = "A fast, short-range  melee attack. Clean and simple."
