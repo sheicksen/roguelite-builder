@@ -23,7 +23,7 @@ func _ready() -> void:
 
 	# Use the configured ability if one is provided.
 	if equipped_ability != null:
-		config = equipped_ability.duplicate(true) as AbilityData
+		config = equipped_ability.duplicate(false) as AbilityData
 
 	# Enemy attacks should target the player.
 	config.stats = AttackStats.new(

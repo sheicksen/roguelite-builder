@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="2_enemy"]
 [ext_resource type="PackedScene" uid="uid://dox126tk5ofo6" path="res://scenes/Dummy.tscn" id="3_dummy"]
 [ext_resource type="Script" uid="uid://h3shott0dkbt" path="res://scripts/ability_configs/sword_config.gd" id="3_oeokk"]
+[ext_resource type="Script" uid="uid://f6t6cse2io3d" path="res://scripts/ai/ranged_enemy.gd" id="4_s5p0v"]
+[ext_resource type="Script" uid="uid://c2dg2u528i4mv" path="res://scripts/ability_configs/poisongun_config.gd" id="5_dd2km"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
 distance = -330.0
@@ -14,6 +16,10 @@ size = Vector2(145, 20)
 [sub_resource type="Resource" id="Resource_3gvst"]
 script = ExtResource("3_oeokk")
 metadata/_custom_type_script = "uid://h3shott0dkbt"
+
+[sub_resource type="Resource" id="Resource_oeokk"]
+script = ExtResource("5_dd2km")
+metadata/_custom_type_script = "uid://c2dg2u528i4mv"
 
 [node name="TestroomPc" type="Node2D" unique_id=1034884043]
 
@@ -67,6 +73,13 @@ attack_range = 50.0
 position = Vector2(349, 253)
 attack_range = 50.0
 equipped_ability = SubResource("Resource_3gvst")
+
+[node name="Enemy3" parent="." unique_id=531784656 instance=ExtResource("2_enemy")]
+position = Vector2(633, 497)
+script = ExtResource("4_s5p0v")
+preferred_range = 250.0
+minimum_range = 150.0
+equipped_ability = SubResource("Resource_oeokk")
 
 [node name="Dummy" parent="." unique_id=1460571239 instance=ExtResource("3_dummy")]
 position = Vector2(-118, 506)

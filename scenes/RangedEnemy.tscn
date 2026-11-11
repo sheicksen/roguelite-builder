@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dn5b1l4mis3hd"]
+
+[ext_resource type="Script" uid="uid://f6t6cse2io3d" path="res://scripts/ai/ranged_enemy.gd" id="1_dfo0x"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hhtpo"]
+size = Vector2(32, 32)
+
+[node name="RangedEnemy" type="CharacterBody2D" unique_id=1081551853]
+script = ExtResource("1_dfo0x")
+detection_range = 250.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=676791160]
+shape = SubResource("RectangleShape2D_hhtpo")
