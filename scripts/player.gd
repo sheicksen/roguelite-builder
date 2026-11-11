@@ -7,6 +7,7 @@ const AIR_FRICTION = 150.0
 const JUMP_LENIENCY = 0.2
 
 # Player specific stats
+var inventory: Inventory
 var stats: EntityStats # Passed into hurtbox
 var health_recovery: float = 0
 var max_stamina: int = 100
@@ -68,6 +69,8 @@ func _init(
 	var third_ability = Ability.new("Sword", SwordConfig.new())
 	add_child(third_ability)
 	abilities.append(third_ability)
+	
+	inventory = Inventory.new(self)
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
@@ -202,4 +205,18 @@ func toggle_crouch() -> void:
 	else:
 		crouching = true
 		$PlayerCollider.scale.y = 0.5
+
+func update_abilities() -> void:
+	for ability in abilities:
+		ability.queue_free()
+	abilities.clear()
+	for ability_stat in inventory.ability_stats:
+		var new_ability: Ability
+		if ability_stat is ProjectileData:
+			new_ability = RangedAbility.new(ability_stat.name, ability_stat)
+		else:
+			new_ability = Ability.new(ability_stat.name, ability_stat)
+		abilities.append(new_ability)
+		add_child(new_ability)
+		
 		

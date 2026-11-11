@@ -26,3 +26,5 @@ class_name AbilityData extends Resource
 @export var hitlog: bool = true # Use hitlog
 @export var do_emit_signal = false # Emit signal when hitbox contacts a target
 @export var hitbox_offsets: Array[Vector2] = [Vector2(10, 0)] # Vector of hitbox offsets
+
+@export var description: String = ""
