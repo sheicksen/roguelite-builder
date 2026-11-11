@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://dox126tk5ofo6"]
+
+[ext_resource type="Texture2D" uid="uid://dlwx4nd38cnd3" path="res://icon.svg" id="1_0j1vb"]
+[ext_resource type="Script" uid="uid://bidvrp0mtw4py" path="res://scripts/dummy.gd" id="1_2hh5m"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_qgrd7"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_qgrd7"]
+radius = 33.0
+
+[node name="Dummy" type="Node2D" unique_id=1460571239]
+script = ExtResource("1_2hh5m")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=2012812364]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_0j1vb")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=621888336]
+physics_material_override = SubResource("PhysicsMaterial_qgrd7")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=882623100]
+shape = SubResource("CircleShape2D_qgrd7")

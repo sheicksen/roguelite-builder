@@ -1,7 +1,9 @@
+
 [gd_scene format=3 uid="uid://dyvrv5tg3bye8"]
 
 [ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_rrvei"]
-[ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="2_2t6uq"]
+[ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="2_enemy"]
+[ext_resource type="PackedScene" uid="uid://dox126tk5ofo6" path="res://scenes/Dummy.tscn" id="3_dummy"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
 distance = -330.0
@@ -53,4 +55,7 @@ shape = SubResource("RectangleShape2D_qgrd7")
 position = Vector2(130, 492)
 shape = SubResource("RectangleShape2D_qgrd7")
 
-[node name="Enemy" parent="." unique_id=1081551853 instance=ExtResource("2_2t6uq")]
+[node name="Enemy" parent="." unique_id=1081551853 instance=ExtResource("2_enemy")]
+
+[node name="Dummy" parent="." unique_id=1460571239 instance=ExtResource("3_dummy")]
+position = Vector2(-118, 506)
