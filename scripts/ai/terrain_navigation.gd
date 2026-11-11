@@ -39,14 +39,12 @@ var debug_path: PackedVector2Array = PackedVector2Array()
 @export var debug_jump_height: float = 64.0
 
 
-
 func _ready() -> void:
 	# Allow enemies to discover the navigation system.
 	add_to_group("terrain_navigation")
 
 	# Listen for terrain modifications.
 	room.terrain_changed.connect(_request_rebuild)
-
 
 
 ## Schedules one rebuild, even if many tiles change at once.
@@ -141,6 +139,28 @@ func rebuild_navigation() -> void:
 
 		candidate_jumps.append(Vector2i(from_id, to_id))
 
+
+	# Find potential upward jumps to nearby higher platforms.
+	for cell in point_ids_by_cell.keys():
+		# Look one or two tiles to either side.
+		for horizontal_offset in [-2, -1, 1, 2]:
+			# Look for platforms one or two tiles higher.
+			for rise in [1, 2]:
+				var landing_cell: Vector2i = (
+					cell + Vector2i(horizontal_offset, -rise)
+				)
+
+				if not point_ids_by_cell.has(landing_cell):
+					continue
+
+				var from_id: int = point_ids_by_cell[cell]
+				var to_id: int = point_ids_by_cell[landing_cell]
+
+				var connection := Vector2i(from_id, to_id)
+
+				# Store the upward jump as a directional candidate.
+				if not candidate_jumps.has(connection):
+					candidate_jumps.append(connection)
 
 	# Use the project's default gravity for our initial test.
 	var gravity: float = float(
@@ -330,6 +350,7 @@ func estimate_max_jump_distance(
 	jump_height: float,
 	gravity: float
 ) -> float:
+
 	if move_speed <= 0.0 or jump_height <= 0.0 or gravity <= 0.0:
 		return 0.0
 
@@ -340,6 +361,45 @@ func estimate_max_jump_distance(
 	var time_in_air: float = 2.0 * jump_velocity / gravity
 
 	return move_speed * time_in_air
+
+
+## Calculate how long a jump takes to reach a landing
+## height while descending.
+## Returns -1 if the destination is too high.
+func estimate_jump_landing_time(
+	start_y: float,
+	end_y: float,
+	jump_height: float,
+	gravity: float
+) -> float:
+	if jump_height <= 0.0 or gravity <= 0.0:
+		return -1.0
+
+	# Match BaseEnemy's jumping physics.
+	var launch_speed: float = sqrt(
+		2.0 * gravity * jump_height
+	)
+
+	# In Godot, negative Y means higher up.
+	var height_difference: float = end_y - start_y
+
+	# Solve the vertical motion equation.
+	var discriminant: float = (
+		launch_speed * launch_speed
+		+ 2.0 * gravity * height_difference
+	)
+
+	# The jump cannot reach the required height.
+	if discriminant < 0.0:
+		return -1.0
+
+	# Choose the descending solution.
+	var landing_time: float = (
+		launch_speed + sqrt(discriminant)
+	) / gravity
+
+	return landing_time
+
 
 ## Checks whether the enemy would overlap solid terrain
 ## at a given world position.
@@ -374,6 +434,10 @@ func is_position_blocked(world_position: Vector2) -> bool:
 
 
 ## Simulates a same-height jump and checks for obstacles.
+
+## Checks whether a jump can reach its destination
+## without passing through blocking terrain.
+## Supports destinations at different heights.
 func is_jump_arc_clear(
 	start: Vector2,
 	end: Vector2,
@@ -382,22 +446,39 @@ func is_jump_arc_clear(
 	if gravity <= 0.0 or debug_jump_height <= 0.0:
 		return false
 
+	# Calculate when the enemy reaches the landing height.
+	var flight_time: float = estimate_jump_landing_time(
+		start.y,
+		end.y,
+		debug_jump_height,
+		gravity
+	)
+
+	# Reject destinations that are too high.
+	if flight_time <= 0.0:
+		return false
+
+	# Determine the horizontal speed required to land.
+	var horizontal_speed: float = (
+		end.x - start.x
+	) / flight_time
+
+	# Reject destinations beyond movement capabilities.
+	if absf(horizontal_speed) > debug_move_speed:
+		return false
+
+	# Calculate the initial upward velocity.
 	var jump_speed: float = sqrt(
 		2.0 * gravity * debug_jump_height
 	)
 
-	var flight_time: float = 2.0 * jump_speed / gravity
-	var horizontal_speed: float = (end.x - start.x) / flight_time
-
-	# Reject jumps requiring too much horizontal speed.
-	if absf(horizontal_speed) > debug_move_speed:
-		return false
-
-	# Sample positions along the predicted jump.
+	# Sample the jump trajectory for collisions.
 	var samples: int = 24
 
 	for i in range(1, samples + 1):
-		var time: float = flight_time * float(i) / float(samples)
+		var time: float = (
+			flight_time * float(i) / float(samples)
+		)
 
 		var position: Vector2 = Vector2(
 			start.x + horizontal_speed * time,
@@ -406,7 +487,12 @@ func is_jump_arc_clear(
 		)
 
 		if is_position_blocked(position):
-			print("Jump blocked at sample ", i, ": ", position)
+			print(
+				"Jump blocked at sample ",
+				i,
+				": ",
+				position
+			)
 			return false
 
 	return true
