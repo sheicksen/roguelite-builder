@@ -20,14 +20,18 @@ func add_item(item:Item)->void:
 	pickups.append(item)
 	for i in item.target_stats.size():
 			modify_stat(item.target_stats[i], item.amounts[i])
+	if item.ability_stats:
+		print("PROMPT ABILITY SWAP GUI")
+		assign_ability(item.ability_stats, 1) # TEMPORARY ASSIGNMENT LINE
 
-func remove_item(item_name: String) -> void:
+func remove_item(item_name: String, is_ability=false) -> void:
 	for item in pickups:
-		if item.name == item_name:
+		if item.name == item_name or (is_ability and item_name == item.ability_stats.name):
 			for i in item.target_stats.size():
 				if item.target_stats[i] != "health":
 					modify_stat(item.target_stats[i], -1 * item.amounts[i])
 			pickups.erase(item)
+			break
 
 func modify_stat(target, amount):
 	match target:
@@ -60,7 +64,8 @@ func assign_ability(ability_data:AbilityData, slot:int) -> void:
 	if slot < 1 or slot > 3:
 		push_error("Valid ability slots are 1, 2, and 3.")
 		return
-		
+	
+	remove_item(ability_stats[slot - 1].name, true) # remove affiliated item
 	ability_stats.remove_at(slot - 1)
 	ability_stats.insert(slot - 1, ability_data)
 	

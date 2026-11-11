@@ -114,4 +114,33 @@ func test_add_ranged_ability():
 		if ability.data == new_ability:
 			found_ability = true
 	assert_true(found_ability, "Added ability should exist in player abilities")
+
+func test_ability_item_swap():
+	gut.p("Adding health-boosting sword item to player inventory.")
+	var new_ability = SwordConfig.new()
+	var replacement_ability = PoisonGunConfig.new()
+	var ability_item = Item.new("Sword", ["max_health"], [20], 0, new_ability)
+	_player.inventory.add_item(ability_item)
+	assert_eq(_player.stats.max_health, 120, "Player health should be 120 while holding sword.")
+	assert_has(_player.inventory.pickups, ability_item)
+	var found_ability = false
+	for ability in _player.abilities:
+		if ability.data == new_ability:
+			found_ability = true
+	assert_true(found_ability, "Added ability should exist in player abilities")
+	gut.p("Replacing sword item with no-stat modifying gun item. Expect sword to be removed.")
+	var ability_item_2 = Item.new("Gun", [], [], 0, replacement_ability)
+	_player.inventory.add_item(ability_item_2)
+	found_ability = false
+	for ability in _player.abilities:
+		if ability.data == replacement_ability:
+			found_ability = true
+	assert_true(found_ability, "Replacement ability should exist in player abilities")
+	assert_does_not_have(_player.inventory.pickups, ability_item, "Player should no longer have sword item after replacing ability")
+	assert_eq(_player.stats.max_health, 100, "Player's max health should reduce to 100 after dropping sword")
+	
+	
+	
+	
+	
 	
