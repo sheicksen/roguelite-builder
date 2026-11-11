@@ -8,10 +8,34 @@ extends BaseEnemy
 @export_group("AI Behavior")
 @export var detection_range: float = 250.0
 @export var attack_range: float = 32.0
-@export var attack_cooldown: float = 1.5
+
+@export_group("Combat")
+@export var equipped_ability: AbilityData
 
 var target: Player
-var _attack_cooldown_remaining: float = 0.0
+var melee_ability: Ability
+
+func _ready() -> void:
+	super._ready()
+
+	# Default to a Knife if no ability is assigned.
+	var config: AbilityData = KnifeConfig.new()
+
+	# Use the configured ability if one is provided.
+	if equipped_ability != null:
+		config = equipped_ability.duplicate(true) as AbilityData
+
+	# Enemy attacks should target the player.
+	config.stats = AttackStats.new(
+		attack_damage,
+		attack_damage_type,
+		[BaseStats.Faction.PLAYER]
+	)
+
+	# Create the ability and attach it to the enemy.
+	melee_ability = Ability.new("EnemyAttack", config)
+	add_child(melee_ability)
+
 
 func _physics_process(delta: float) -> void:
 	# Find the player if we don't already have a valid target.
@@ -37,8 +61,14 @@ func _physics_process(delta: float) -> void:
 		velocity.x = signf(direction) * move_speed
 
 	else:
-		# Player is within attack range. Stop moving.
+		# Player is within attack range.
 		velocity.x = 0.0
+
+		# Determine which direction the enemy is facing.
+		var facing: int = 1 if direction >= 0.0 else -1
+
+		# Use the equipped melee ability.
+		melee_ability.use_ability(self, facing)
 
 	# Let BaseEnemy handle gravity and move_and_slide().
 	super._physics_process(delta)

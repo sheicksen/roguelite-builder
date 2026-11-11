@@ -1,15 +1,19 @@
-
 [gd_scene format=3 uid="uid://dyvrv5tg3bye8"]
 
 [ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_rrvei"]
 [ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="2_enemy"]
 [ext_resource type="PackedScene" uid="uid://dox126tk5ofo6" path="res://scenes/Dummy.tscn" id="3_dummy"]
+[ext_resource type="Script" uid="uid://h3shott0dkbt" path="res://scripts/ability_configs/sword_config.gd" id="3_oeokk"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
 distance = -330.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_qgrd7"]
 size = Vector2(145, 20)
+
+[sub_resource type="Resource" id="Resource_3gvst"]
+script = ExtResource("3_oeokk")
+metadata/_custom_type_script = "uid://h3shott0dkbt"
 
 [node name="TestroomPc" type="Node2D" unique_id=1034884043]
 
@@ -56,6 +60,13 @@ position = Vector2(130, 492)
 shape = SubResource("RectangleShape2D_qgrd7")
 
 [node name="Enemy" parent="." unique_id=1081551853 instance=ExtResource("2_enemy")]
+position = Vector2(-388, 508)
+attack_range = 50.0
+
+[node name="Enemy2" parent="." unique_id=42760030 instance=ExtResource("2_enemy")]
+position = Vector2(349, 253)
+attack_range = 50.0
+equipped_ability = SubResource("Resource_3gvst")
 
 [node name="Dummy" parent="." unique_id=1460571239 instance=ExtResource("3_dummy")]
 position = Vector2(-118, 506)
