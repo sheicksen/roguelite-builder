@@ -2,14 +2,14 @@ class_name Inventory extends Resource
 @export var coins: int = 0
 @export var corruption: int = 0
 @export var pickups: Array[Item] = []
-@export var ability_1: AbilityData = NullAbilityConfig.new()
-@export var ability_2: AbilityData = NullAbilityConfig.new()
-@export var ability_3: AbilityData = NullAbilityConfig.new()
+@export var ability_stats: Array[AbilityData] = [NullAbilityConfig.new(),NullAbilityConfig.new(),NullAbilityConfig.new()]
 
+var owner: Node2D
 var owner_stats: EntityStats
 
 func _init(_owner:Node2D) -> void:
 	if "stats" in _owner:
+		owner = _owner
 		owner_stats = _owner.stats
 	else:
 		push_error("Node must have EntityStats to use inventory.")
@@ -55,16 +55,16 @@ func modify_stat(target, amount):
 			owner_stats.add_vulnerability(amount)
 
 func assign_ability(ability_data:AbilityData, slot:int) -> void:
-	match slot:
-		1:
-			ability_1 = ability_data
-		2:
-			ability_2 = ability_data
-		3:
-			ability_3 = ability_data
-		_:
-			push_error("Can only assign abilities to slots 1-3.")
-
+	if slot < 1 or slot > 3:
+		push_error("Valid ability slots are 1, 2, and 3.")
+		return
+		
+	ability_stats.remove_at(slot - 1)
+	ability_stats.insert(slot - 1, ability_data)
+	
+	if owner.has_method("update_abilities"):
+		owner.update_abilities()
+	
 func gain_coins(amount: int) -> int:
 	if amount < 0:
 		push_error("Cannot gain negative amount of coins.")

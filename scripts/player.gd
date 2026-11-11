@@ -205,4 +205,18 @@ func toggle_crouch() -> void:
 	else:
 		crouching = true
 		$PlayerCollider.scale.y = 0.5
+
+func update_abilities() -> void:
+	for ability in abilities:
+		ability.queue_free()
+	
+	for ability_stat in inventory.ability_stats:
+		var new_ability: Ability
+		if ability_stat is ProjectileData:
+			new_ability = RangedAbility.new("", ability_stat)
+		else:
+			new_ability = Ability.new("", ability_stat)
+		abilities.append(new_ability)
+		add_child(new_ability)
+		
 		
