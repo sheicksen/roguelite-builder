@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://bo441e2yibicq"]
+
+[ext_resource type="PackedScene" uid="uid://c25vdd20byqs5" path="res://scenes/EditableRoom.tscn" id="1_7mtnh"]
+[ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_oi1ia"]
+
+[node name="TestRoom" type="Node2D" unique_id=1034884043]
+
+[node name="EditableRoom" parent="." unique_id=513866417 instance=ExtResource("1_7mtnh")]
+
+[node name="Player" parent="." unique_id=1953412444 instance=ExtResource("1_oi1ia")]
+position = Vector2(586, 376)

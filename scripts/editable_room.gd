@@ -2,6 +2,9 @@
 class_name EditableRoom
 extends Node2D
 
+## Emitted whenever the room's terrain is edited.
+signal terrain_changed
+
 ## Manages editable floor and wall tiles for the level builder.
 
 # --- Tile Configuration ---
@@ -140,6 +143,9 @@ func _edit_tile_at_mouse(button: int) -> void:
 			get_global_mouse_position(),
 			EDITOR_TEST_DAMAGE
 		)
+
+	# Notify other systems that the terrain may have changed.
+	terrain_changed.emit()
 
 
 

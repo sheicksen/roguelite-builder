@@ -10,3 +10,6 @@ script = ExtResource("1_3gvst")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=676791160]
 shape = SubResource("RectangleShape2D_hhtpo")
+
+[node name="GroundAhead" type="RayCast2D" parent="." unique_id=808729300]
+target_position = Vector2(0, 42)
