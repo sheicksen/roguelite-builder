@@ -1,4 +1,6 @@
 class_name Inventory extends Resource
+## Resource for tracking coins, corruptions, Items which modify stats, and ability data
+## Updates the owners stats and ability list upon item pickup
 @export var coins: int = 0
 @export var corruption: int = 0
 @export var pickups: Array[Item] = []
@@ -65,7 +67,7 @@ func assign_ability(ability_data:AbilityData, slot:int) -> void:
 	if owner.has_method("update_abilities"):
 		owner.update_abilities()
 	
-func gain_coins(amount: int) -> int:
+func add_coins(amount: int) -> int:
 	if amount < 0:
 		push_error("Cannot gain negative amount of coins.")
 		return -1
@@ -92,7 +94,7 @@ func gain_corruption(amount: int) -> int:
 	
 func reduce_corruption(amount: int) -> int:
 	if amount < 0: 
-		push_error("Cannpt reduce by negative corruption.")
+		push_error("Cannot reduce by negative corruption.")
 		return -1
 	
 	corruption -= amount
