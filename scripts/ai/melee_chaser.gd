@@ -72,6 +72,13 @@ func _physics_process(delta: float) -> void:
 			"terrain_navigation"
 		) as TerrainNavigation
 
+		# Listen for changes to the room's navigation graph.
+		if is_instance_valid(terrain_navigation):
+			terrain_navigation.navigation_rebuilt.connect(
+				_on_navigation_rebuilt
+			)
+
+
 	# Count down until the next path recalculation.
 	repath_timer = maxf(repath_timer - delta, 0.0)
 
@@ -257,3 +264,20 @@ func move_toward_player_after_route() -> void:
 	# Follow the player instead of stopping at a waypoint.
 	var direction: float = target.global_position.x - global_position.x
 	velocity.x = signf(direction) * move_speed
+
+
+## Invalidates the current route when terrain changes.
+func _on_navigation_rebuilt() -> void:
+	# Request a fresh path on the next physics update.
+	repath_timer = 0.0
+
+	# Don't interrupt an enemy already in midair.
+	if jump_in_progress:
+		return
+
+	# Discard the old path.
+	navigation_steps.clear()
+	navigation_step_index = 0
+	jump_reported = false
+
+	print("Navigation changed. Enemy will recalculate its route.")

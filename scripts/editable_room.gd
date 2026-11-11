@@ -218,7 +218,11 @@ func place_destructible_tile(cell: Vector2i) -> void:
 
 
 ## Removes both the tile and its stored health.
+
 func remove_destructible_tile(cell: Vector2i) -> void:
+	# Check whether a tile actually exists before removing it.
+	var had_tile: bool = has_destructible_tile(cell)
+
 	destructible_terrain.erase_cell(cell)
 	_destructible_health.erase(cell)
 
@@ -228,6 +232,10 @@ func remove_destructible_tile(cell: Vector2i) -> void:
 
 		_destructible_hurtboxes.erase(cell)
 		hurtbox.queue_free()
+
+	# Tell navigation that the terrain has changed.
+	if had_tile:
+		terrain_changed.emit()
 
 
 func has_destructible_tile(cell: Vector2i) -> bool:
@@ -429,6 +437,9 @@ func load_room_data(data: Dictionary) -> bool:
 	_restore_layer(platforms, data["platform"])
 	_restore_layer(hidden_passages, data["hidden"])
 	_restore_layer(destructible_terrain, data["destructible"])
+
+	# Rebuild navigation after restoring the saved room.
+	terrain_changed.emit()
 
 	return true
 

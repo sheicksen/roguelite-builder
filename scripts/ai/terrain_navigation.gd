@@ -2,6 +2,9 @@
 class_name TerrainNavigation
 extends Node2D
 
+## Emitted whenever the navigation graph has finished rebuilding.
+signal navigation_rebuilt
+
 ## Automatically detects potential standing positions
 ## using the room's existing terrain layers.
 
@@ -138,8 +141,6 @@ func rebuild_navigation() -> void:
 
 		candidate_jumps.append(Vector2i(from_id, to_id))
 
-	print("Candidate jumps: ", candidate_jumps.size())
-
 
 	# Use the project's default gravity for our initial test.
 	var gravity: float = float(
@@ -238,6 +239,8 @@ func rebuild_navigation() -> void:
 
 	print("Generated navigation positions: ", walkable_positions.size())
 
+	# Notify enemies that the navigation graph has changed.
+	navigation_rebuilt.emit()
 
 ## Checks whether a tile position is occupied by terrain.
 func _is_occupied(cell: Vector2i) -> bool:
