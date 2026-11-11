@@ -7,7 +7,7 @@ const AIR_FRICTION = 150.0
 const JUMP_LENIENCY = 0.2
 
 # Player specific stats
-var inventory: Inventory = Inventory.new(self)
+var inventory: Inventory
 var stats: EntityStats # Passed into hurtbox
 var health_recovery: float = 0
 var max_stamina: int = 100
@@ -69,6 +69,8 @@ func _init(
 	var third_ability = Ability.new("Sword", SwordConfig.new())
 	add_child(third_ability)
 	abilities.append(third_ability)
+	
+	inventory = Inventory.new(self)
 
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)

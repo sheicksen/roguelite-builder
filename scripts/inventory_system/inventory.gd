@@ -54,14 +54,16 @@ func modify_stat(target, amount):
 		else:
 			owner_stats.add_vulnerability(amount)
 
-func assign_ability_1(ability_data:AbilityData) -> void:
-	ability_1 = ability_data
-
-func assign_ability_2(ability_data:AbilityData) -> void:
-	ability_2 = ability_data
-
-func assign_ability_3(ability_data:AbilityData) -> void:
-	ability_3 = ability_data
+func assign_ability(ability_data:AbilityData, slot:int) -> void:
+	match slot:
+		1:
+			ability_1 = ability_data
+		2:
+			ability_2 = ability_data
+		3:
+			ability_3 = ability_data
+		_:
+			push_error("Can only assign abilities to slots 1-3.")
 
 func gain_coins(amount: int) -> int:
 	if amount < 0:

@@ -1,17 +1,14 @@
 extends GutTest
 
 var _player = null;
-var _inventory = null;
 
 func before_each():
 	gut.p("Creating empty inventory for player")
 	_player = Player.new("Player", 1, 100, 300)
-	_inventory = Inventory.new(_player)
-	_player.inventory = _inventory
 	
 func after_each():
 	gut.p("Removing inventory from player")
-	_inventory = null
+	#_inventory = null
 	_player.free()
 	assert_no_new_orphans()
 
