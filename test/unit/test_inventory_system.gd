@@ -91,4 +91,27 @@ func test_multistat_item_drop():
 func test_remove_non_existent_item():
 	_player.inventory.remove_item("Bob")
 
+func test_add_melee_ability():
+	var new_ability = SwordConfig.new()
+	gut.p("Assign melee ability to second slot")
+	_player.inventory.assign_ability(new_ability, 2)
+	assert_eq(len(_player.inventory.ability_stats), 3, "Inventory should only have 3 abilities")
+	assert_eq(len(_player.abilities), 3, "Player should only have 3 abilties")
+	var found_ability = false
+	for ability in _player.abilities:
+		if ability.data == new_ability:
+			found_ability = true
+	assert_true(found_ability, "Added ability should exist in player abilities")
+	
+func test_add_ranged_ability():
+	var new_ability = PoisonGunConfig.new()
+	gut.p("Assign ranged ability to second slot")
+	_player.inventory.assign_ability(new_ability, 2)
+	assert_eq(len(_player.inventory.ability_stats), 3, "Inventory should only have 3 abilities")
+	assert_eq(len(_player.abilities), 3, "Player should only have 3 abilties")
+	var found_ability = false
+	for ability in _player.abilities:
+		if ability.data == new_ability:
+			found_ability = true
+	assert_true(found_ability, "Added ability should exist in player abilities")
 	

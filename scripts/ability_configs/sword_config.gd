@@ -1,6 +1,7 @@
 class_name SwordConfig extends AbilityData
 
 func _init() -> void:
+	name = "Sword"
 	stats = AttackStats.new(30, 0, [BaseStats.Faction.ENEMY])
 	icon = ""
 	

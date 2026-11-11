@@ -209,13 +209,13 @@ func toggle_crouch() -> void:
 func update_abilities() -> void:
 	for ability in abilities:
 		ability.queue_free()
-	
+	abilities.clear()
 	for ability_stat in inventory.ability_stats:
 		var new_ability: Ability
 		if ability_stat is ProjectileData:
-			new_ability = RangedAbility.new("", ability_stat)
+			new_ability = RangedAbility.new(ability_stat.name, ability_stat)
 		else:
-			new_ability = Ability.new("", ability_stat)
+			new_ability = Ability.new(ability_stat.name, ability_stat)
 		abilities.append(new_ability)
 		add_child(new_ability)
 		

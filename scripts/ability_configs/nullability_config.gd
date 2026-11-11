@@ -1,6 +1,7 @@
 class_name NullAbilityConfig extends AbilityData
 
 func _init() -> void:
+	name = "NULL"
 	stats = null
 	icon = ""
 	

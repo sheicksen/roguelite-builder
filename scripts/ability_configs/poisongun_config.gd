@@ -1,6 +1,7 @@
 class_name PoisonGunConfig extends ProjectileData
 
 func _init() -> void:
+	name = "Poison Gun"
 	stats = AttackStats.new(
 		20, 
 		BaseStats.DamageType.POISON, 
