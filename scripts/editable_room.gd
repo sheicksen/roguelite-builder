@@ -37,6 +37,13 @@ var selected_terrain: int = 0
 @onready var destructible_terrain: TileMapLayer = $DestructibleTerrain
 @onready var hidden_passages: TileMapLayer = $HiddenPassages
 
+## Initialize navigation after the room's terrain layers are ready.
+func _ready() -> void:
+	var navigation: TerrainNavigation = $TerrainNavigation
+
+	if navigation != null:
+		navigation.rebuild_navigation()
+
 # --- Constants ---
 
 const ROOM_FILE_PATH: String = "user://editable_room.json"

@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Roguelite Builder"
-run/main_scene="uid://c25vdd20byqs5"
+run/main_scene="uid://bo441e2yibicq"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 

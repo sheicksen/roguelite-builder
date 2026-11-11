@@ -6,16 +6,16 @@
 [ext_resource type="Script" uid="uid://bjllbgn2nw3kx" path="res://scenes/tile_preview.gd" id="3_wwqfs"]
 [ext_resource type="Script" uid="uid://uxn73wj2bt1g" path="res://scripts/ai/terrain_navigation.gd" id="4_fgmms"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3utn5"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_fgmms"]
 texture = ExtResource("1_7ukgc")
 texture_region_size = Vector2i(32, 32)
 use_texture_padding = false
 0:0/next_alternative_id = 2
 0:0/0 = 0
-0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -64, 64, -64, 64, 64, -64, 64)
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 0:0/1 = 1
 0:0/1/modulate = Color(1, 0.40392157, 1, 1)
-0:0/1/physics_layer_0/polygon_0/points = PackedVector2Array(-64, -33, 64, -34, 64, -64, -64, -64)
+0:0/1/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -8, 16, -8, 16, -16, -16, -16)
 0:0/1/physics_layer_0/polygon_0/one_way = true
 1:0/0 = 0
 2:0/0 = 0
@@ -36,15 +36,11 @@ use_texture_padding = false
 [sub_resource type="TileSet" id="TileSet_gb0uo"]
 tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
-sources/0 = SubResource("TileSetAtlasSource_3utn5")
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_r0i8a"]
-size = Vector2(60, 60)
+sources/0 = SubResource("TileSetAtlasSource_fgmms")
 
 [node name="EditableRoom" type="Node2D" unique_id=513866417]
 script = ExtResource("1_3utn5")
 edit_mode = true
-selected_terrain = 2
 
 [node name="SolidTerrain" type="TileMapLayer" parent="." unique_id=1983141028]
 tile_set = SubResource("TileSet_gb0uo")
@@ -84,12 +80,3 @@ text = "Terrain:"
 
 [node name="TerrainSelector" type="OptionButton" parent="EditorUI/PanelContainer/HBoxContainer" unique_id=1770155374]
 layout_mode = 2
-
-[node name="TerrainTester" type="RigidBody2D" parent="." unique_id=1783319760]
-visible = false
-position = Vector2(577, 74)
-linear_velocity = Vector2(0, -700)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="TerrainTester" unique_id=14455533]
-shape = SubResource("RectangleShape2D_r0i8a")
-debug_color = Color(0, 0, 0, 0.41960785)

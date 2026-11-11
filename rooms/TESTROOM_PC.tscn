@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://h3shott0dkbt" path="res://scripts/ability_configs/sword_config.gd" id="3_oeokk"]
 [ext_resource type="Script" uid="uid://f6t6cse2io3d" path="res://scripts/ai/ranged_enemy.gd" id="4_s5p0v"]
 [ext_resource type="Script" uid="uid://c2dg2u528i4mv" path="res://scripts/ability_configs/poisongun_config.gd" id="5_dd2km"]
+[ext_resource type="PackedScene" uid="uid://c25vdd20byqs5" path="res://scenes/EditableRoom.tscn" id="7_dd2km"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_8fbn1"]
 distance = -330.0
@@ -83,3 +84,5 @@ equipped_ability = SubResource("Resource_oeokk")
 
 [node name="Dummy" parent="." unique_id=1460571239 instance=ExtResource("3_dummy")]
 position = Vector2(-118, 506)
+
+[node name="EditableRoom" parent="." unique_id=513866417 instance=ExtResource("7_dd2km")]

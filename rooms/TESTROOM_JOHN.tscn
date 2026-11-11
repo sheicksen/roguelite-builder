@@ -1,11 +1,22 @@
-[gd_scene format=3 uid="uid://bo441e2yibicq"]
+[gd_scene format=4 uid="uid://bo441e2yibicq"]
 
 [ext_resource type="PackedScene" uid="uid://c25vdd20byqs5" path="res://scenes/EditableRoom.tscn" id="1_7mtnh"]
 [ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_oi1ia"]
+[ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="3_4cexc"]
 
 [node name="TestRoom" type="Node2D" unique_id=1034884043]
 
 [node name="EditableRoom" parent="." unique_id=513866417 instance=ExtResource("1_7mtnh")]
 
+[node name="SolidTerrain" parent="EditableRoom" index="0" unique_id=1983141028]
+tile_map_data = PackedByteArray("AAAIAAsAAAAAAAAAAAAJAAsAAAAAAAAAAAAKAAsAAAAAAAAAAAALAAsAAAAAAAAAAAAMAAsAAAAAAAAAAAANAAsAAAAAAAAAAAAOAAsAAAAAAAAAAAAPAAsAAAAAAAAAAAAQAAsAAAAAAAAAAAARAAsAAAAAAAAAAAASAAsAAAAAAAAAAAATAAsAAAAAAAAAAAAUAAsAAAAAAAAAAAAWAAsAAAAAAAAAAAAXAAsAAAAAAAAAAAAYAAsAAAAAAAAAAAAZAAsAAAAAAAAAAAAaAAsAAAAAAAAAAAAbAAsAAAAAAAAAAAAcAAsAAAAAAAAAAAAdAAsAAAAAAAAAAAA=")
+
 [node name="Player" parent="." unique_id=1953412444 instance=ExtResource("1_oi1ia")]
-position = Vector2(586, 376)
+position = Vector2(530, 325)
+
+[node name="Enemy" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
+position = Vector2(842, 292)
+detection_range = 1000.0
+can_jump = true
+
+[editable path="EditableRoom"]
