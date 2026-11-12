@@ -3,19 +3,39 @@
 [ext_resource type="PackedScene" uid="uid://c25vdd20byqs5" path="res://scenes/EditableRoom.tscn" id="1_7mtnh"]
 [ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_oi1ia"]
 [ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="3_4cexc"]
+[ext_resource type="Script" uid="uid://cnjhcwifk2lqk" path="res://scripts/ability_configs/knife_config.gd" id="4_dng0i"]
+
+[sub_resource type="Resource" id="Resource_dng0i"]
+script = ExtResource("4_dng0i")
+metadata/_custom_type_script = "uid://cnjhcwifk2lqk"
+
+[sub_resource type="Resource" id="Resource_uhxue"]
+script = ExtResource("4_dng0i")
+metadata/_custom_type_script = "uid://cnjhcwifk2lqk"
 
 [node name="TestRoom" type="Node2D" unique_id=1034884043]
 
 [node name="EditableRoom" parent="." unique_id=513866417 instance=ExtResource("1_7mtnh")]
 
 [node name="SolidTerrain" parent="EditableRoom" index="0" unique_id=1983141028]
-tile_map_data = PackedByteArray("AAARAAoAAAAAAAAAAAAQAAoAAAAAAAAAAAAPAAoAAAAAAAAAAAAOAAoAAAAAAAAAAAAMAAgAAAAAAAAAAAALAAgAAAAAAAAAAAAKAAgAAAAAAAAAAAASAAoAAAAAAAAAAAATAAoAAAAAAAAAAAAUAAoAAAAAAAAAAAAVAAoAAAAAAAAAAAAWAAoAAAAAAAAAAAAXAAoAAAAAAAAAAAAYAAoAAAAAAAAAAAAZAAoAAAAAAAAAAAAaAAoAAAAAAAAAAAAbAAoAAAAAAAAAAAAcAAoAAAAAAAAAAAAdAAoAAAAAAAAAAAAJAAgAAAAAAAAAAAAIAAgAAAAAAAAAAAAHAAgAAAAAAAAAAAAGAAgAAAAAAAAAAAAFAAgAAAAAAAAAAAAEAAgAAAAAAAAAAAADAAgAAAAAAAAAAAACAAgAAAAAAAAAAAABAAgAAAAAAAAAAAAAAAgAAAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAARAAoAAAAAAAAAAAAQAAoAAAAAAAAAAAAPAAoAAAAAAAAAAAAOAAoAAAAAAAAAAAASAAoAAAAAAAAAAAATAAoAAAAAAAAAAAAUAAoAAAAAAAAAAAAVAAoAAAAAAAAAAAAWAAoAAAAAAAAAAAAXAAoAAAAAAAAAAAAYAAoAAAAAAAAAAAAZAAoAAAAAAAAAAAAaAAoAAAAAAAAAAAAbAAoAAAAAAAAAAAAcAAoAAAAAAAAAAAAdAAoAAAAAAAAAAAANAAsAAAAAAAAAAAAMAAsAAAAAAAAAAAALAAsAAAAAAAAAAAAKAAsAAAAAAAAAAAAJAAsAAAAAAAAAAAAIAAsAAAAAAAAAAAAHAAsAAAAAAAAAAAAGAAsAAAAAAAAAAAAFAAsAAAAAAAAAAAAEAAsAAAAAAAAAAAADAAsAAAAAAAAAAAACAAsAAAAAAAAAAAABAAsAAAAAAAAAAAAAAAsAAAAAAAAAAAA=")
 
 [node name="Player" parent="." unique_id=1953412444 instance=ExtResource("1_oi1ia")]
 position = Vector2(518, 296)
 
-[node name="Enemy" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
-position = Vector2(328, 221)
+[node name="AgileChaser" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
+position = Vector2(338, 320)
+detection_range = 500.0
+equipped_ability = SubResource("Resource_dng0i")
+can_jump = true
+
+[node name="HeavyChaser" parent="." unique_id=466231462 instance=ExtResource("3_4cexc")]
+position = Vector2(254, 320)
+detection_range = 500.0
+equipped_ability = SubResource("Resource_uhxue")
+move_speed = 10
+defense = 100
+jump_height = 16.0
 can_jump = true
 
 [editable path="EditableRoom"]

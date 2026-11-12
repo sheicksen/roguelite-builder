@@ -21,6 +21,12 @@ var _rebuild_queued: bool = false
 # Stores our automatically generated navigation graph.
 var astar: AStar2D = AStar2D.new()
 
+# Navigation graph for enemies that cannot jump.
+var no_jump_astar: AStar2D = AStar2D.new()
+
+# Cached graphs for different enemy movement configurations.
+var capability_graph_cache: Dictionary = {}
+
 # Maps terrain cells to their navigation point IDs.
 var point_ids_by_cell: Dictionary = {}
 
@@ -69,11 +75,13 @@ func rebuild_navigation() -> void:
 
 	# Clear the previous graph before regenerating it.
 	astar.clear()
+	no_jump_astar.clear()
 	point_ids_by_cell.clear()
 	candidate_jumps.clear()
 	jump_connections.clear()
 	candidate_drops.clear()
 	drop_connections.clear()
+	capability_graph_cache.clear()
 
 	var ground_cells: Dictionary = {}
 
@@ -117,6 +125,7 @@ func rebuild_navigation() -> void:
 		# Register this standing position with AStar2D.
 		var point_id: int = astar.get_available_point_id()
 		astar.add_point(point_id, world_position)
+		no_jump_astar.add_point(point_id, world_position)
 
 		# Remember which terrain cell produced this point.
 		point_ids_by_cell[cell] = point_id
@@ -259,6 +268,7 @@ func rebuild_navigation() -> void:
 			var to_id: int = point_ids_by_cell[neighbor_cell]
 
 			astar.connect_points(from_id, to_id)
+			no_jump_astar.connect_points(from_id, to_id)
 			walking_connections += 1
 
 	print("Walking connections: ", walking_connections)
@@ -279,6 +289,13 @@ func rebuild_navigation() -> void:
 
 		# Create a one-way route from higher to lower.
 		astar.connect_points(
+			connection.x,
+			connection.y,
+			false
+		)
+
+		# Non-jumping enemies can also drop downward.
+		no_jump_astar.connect_points(
 			connection.x,
 			connection.y,
 			false
@@ -495,20 +512,35 @@ func is_position_blocked(world_position: Vector2) -> bool:
 	return false
 
 
-## Validates a jump using a vertical-first approach
-## for elevated destinations.
+## Validates a jump using configurable movement capabilities.
+## Defaults to debug settings when no values are supplied.
 func is_jump_arc_clear(
 	start: Vector2,
 	end: Vector2,
-	gravity: float
+	gravity: float,
+	move_speed: float = -1.0,
+	jump_height: float = -1.0
 ) -> bool:
-	if gravity <= 0.0 or debug_jump_height <= 0.0:
+	# Preserve existing behavior for calls without overrides.
+	var actual_speed: float = (
+		debug_move_speed if move_speed < 0.0 else move_speed
+	)
+
+	var actual_jump_height: float = (
+		debug_jump_height if jump_height < 0.0 else jump_height
+	)
+
+	if gravity <= 0.0 or actual_jump_height <= 0.0:
 		return false
 
+	if actual_speed <= 0.0:
+		return false
+
+	# Calculate the time available to reach the landing.
 	var flight_time: float = estimate_jump_landing_time(
 		start.y,
 		end.y,
-		debug_jump_height,
+		actual_jump_height,
 		gravity
 	)
 
@@ -516,13 +548,12 @@ func is_jump_arc_clear(
 		return false
 
 	var jump_speed: float = sqrt(
-		2.0 * gravity * debug_jump_height
+		2.0 * gravity * actual_jump_height
 	)
 
 	var horizontal_delay: float = 0.0
 
-	# For higher platforms, wait until the enemy's
-	# feet clear the landing surface before moving sideways.
+	# Higher platforms require vertical clearance first.
 	if end.y < start.y - 1.0:
 		var required_rise: float = start.y - end.y + 1.0
 
@@ -534,7 +565,6 @@ func is_jump_arc_clear(
 		if discriminant < 0.0:
 			return false
 
-		# Time when the enemy first reaches this height.
 		horizontal_delay = (
 			jump_speed - sqrt(discriminant)
 		) / gravity
@@ -542,13 +572,13 @@ func is_jump_arc_clear(
 	var horizontal_distance: float = absf(end.x - start.x)
 	var horizontal_time: float = flight_time - horizontal_delay
 
-	# Ensure sufficient time remains to move horizontally.
-	if horizontal_distance > debug_move_speed * horizontal_time:
+	# Check whether this enemy can cover the distance.
+	if horizontal_distance > actual_speed * horizontal_time:
 		return false
 
 	var horizontal_direction: float = signf(end.x - start.x)
 
-	# Sample the same vertical-first trajectory.
+	# Simulate the jump and check for obstacles.
 	var samples: int = 48
 
 	for i in range(1, samples + 1):
@@ -563,7 +593,7 @@ func is_jump_arc_clear(
 
 		var distance_traveled: float = minf(
 			horizontal_distance,
-			debug_move_speed * moving_time
+			actual_speed * moving_time
 		)
 
 		var position := Vector2(
@@ -573,19 +603,137 @@ func is_jump_arc_clear(
 		)
 
 		if is_position_blocked(position):
-			print("Jump blocked at sample ", i, ": ", position)
 			return false
 
 	return true
 
 
-## Checks whether an enemy can walk off an edge
-## and fall safely toward a lower platform.
+## Builds or retrieves a graph using an enemy's movement settings.
+func get_capability_graph(
+	move_speed: float,
+	jump_height: float
+) -> AStar2D:
+	# Enemies without usable jump capabilities can only
+	# walk and follow existing drop connections.
+	# An enemy with no movement speed cannot navigate.
+	if move_speed <= 0.0:
+		return AStar2D.new()
+
+	var cache_key: String = str(move_speed, ":", jump_height)
+
+	# Reuse an existing graph for matching configurations.
+	if capability_graph_cache.has(cache_key):
+		return capability_graph_cache[cache_key] as AStar2D
+
+	var graph := AStar2D.new()
+
+	# Copy the terrain's standing positions.
+	for point_id in astar.get_point_ids():
+		graph.add_point(
+			point_id,
+			astar.get_point_position(point_id)
+		)
+
+	# Walking connections are available to all enemies.
+	for cell in point_ids_by_cell.keys():
+		var neighbor_cell: Vector2i = cell + Vector2i.RIGHT
+
+		if not point_ids_by_cell.has(neighbor_cell):
+			continue
+
+		var from_id: int = point_ids_by_cell[cell]
+		var to_id: int = point_ids_by_cell[neighbor_cell]
+
+		graph.connect_points(from_id, to_id, true)
+
+
+	# Get the project's gravity for movement validation.
+	var gravity: float = float(
+		ProjectSettings.get_setting("physics/2d/default_gravity")
+	)
+
+	# Validate drops using this enemy's movement speed.
+	for connection in candidate_drops:
+		var start: Vector2 = astar.get_point_position(
+			connection.x
+		)
+
+		var destination: Vector2 = astar.get_point_position(
+			connection.y
+		)
+
+		# Reject drops this enemy cannot complete.
+		if not is_drop_path_clear(
+			start,
+			destination,
+			gravity,
+			move_speed
+		):
+			continue
+
+		# Connect valid drops in the downward direction only.
+		graph.connect_points(
+			connection.x,
+			connection.y,
+			false
+		)
+
+
+	# Validate jump candidates using this enemy's capabilities.
+	for connection in candidate_jumps:
+		var start: Vector2 = astar.get_point_position(
+			connection.x
+		)
+
+		var destination: Vector2 = astar.get_point_position(
+			connection.y
+		)
+
+		# Downward movement uses drop connections.
+		if destination.y > start.y + 1.0:
+			continue
+
+		if not is_jump_arc_clear(
+			start,
+			destination,
+			gravity,
+			move_speed,
+			jump_height
+		):
+			continue
+
+		# Same-height jumps work in both directions.
+		var same_height: bool = (
+			absf(destination.y - start.y) <= 1.0
+		)
+
+		graph.connect_points(
+			connection.x,
+			connection.y,
+			same_height
+		)
+
+	# Cache this configuration for future path requests.
+	capability_graph_cache[cache_key] = graph
+
+	return graph
+
+
+
 func is_drop_path_clear(
 	start: Vector2,
 	end: Vector2,
-	gravity: float
+	gravity: float,
+	move_speed: float = -1.0
 ) -> bool:
+	# Use this enemy's speed when provided.
+	# Otherwise, preserve the existing debug default.
+	var actual_speed: float = (
+		debug_move_speed if move_speed < 0.0 else move_speed
+	)
+	if gravity <= 0.0 or actual_speed <= 0.0:
+		return false
+
 	if gravity <= 0.0 or debug_move_speed <= 0.0:
 		return false
 
@@ -631,7 +779,7 @@ func is_drop_path_clear(
 	)
 
 	# Reject destinations that cannot be reached horizontally.
-	if remaining_distance > debug_move_speed * fall_time:
+	if remaining_distance > actual_speed * fall_time:
 		return false
 
 	# Check for obstacles while moving off the ledge.
@@ -655,7 +803,7 @@ func is_drop_path_clear(
 
 		var horizontal_movement: float = minf(
 			remaining_distance,
-			debug_move_speed * time
+			actual_speed * time
 		)
 
 		var position := Vector2(
@@ -669,24 +817,52 @@ func is_drop_path_clear(
 
 	return true
 
-## Returns a route with movement instructions.
-## Each step contains a position and a movement type.
+
+## Returns a route using the enemy's movement capabilities.
 func get_navigation_steps(
 	from_position: Vector2,
-	to_position: Vector2
+	to_position: Vector2,
+	can_jump: bool = true,
+	move_speed: float = -1.0,
+	jump_height: float = -1.0
 ) -> Array[Dictionary]:
 	var steps: Array[Dictionary] = []
 
-	if astar.get_point_count() == 0:
+	# Choose a graph based on the enemy's capabilities.
+	var path_graph: AStar2D = astar
+
+	if move_speed >= 0.0:
+		if not can_jump:
+			# Disable jumping, but retain speed-aware drops.
+			path_graph = get_capability_graph(
+				move_speed,
+				0.0
+			)
+		elif jump_height >= 0.0:
+			path_graph = get_capability_graph(
+				move_speed,
+				jump_height
+			)
+
+	elif not can_jump:
+		# Compatibility with older calls without speed values.
+		path_graph = no_jump_astar
+
+	if path_graph.get_point_count() == 0:
 		return steps
 
-	var start_id: int = astar.get_closest_point(from_position)
-	var end_id: int = astar.get_closest_point(to_position)
+	var start_id: int = path_graph.get_closest_point(
+		from_position
+	)
+
+	var end_id: int = path_graph.get_closest_point(
+		to_position
+	)
 
 	if start_id == -1 or end_id == -1:
 		return steps
 
-	var path_ids: PackedInt64Array = astar.get_id_path(
+	var path_ids: PackedInt64Array = path_graph.get_id_path(
 		start_id,
 		end_id
 	)
@@ -698,31 +874,33 @@ func get_navigation_steps(
 		if i > 0:
 			var previous_id: int = path_ids[i - 1]
 
-			# Check whether this connection requires jumping.
-			var forward: Vector2i = Vector2i(
+			var forward := Vector2i(
 				previous_id,
 				current_id
 			)
 
-			var backward: Vector2i = Vector2i(
+			var backward := Vector2i(
 				current_id,
 				previous_id
 			)
 
-			# Check whether this connection is a downward drop.
-			if drop_connections.has(forward):
+			# The selected A* graph has already validated
+			# which connections this enemy can use.
+			# Identify the movement type from the candidates.
+			if candidate_drops.has(forward):
 				movement = "drop"
 
-			# Otherwise, check whether jumping is required.
-			elif jump_connections.has(forward) or jump_connections.has(backward):
+			elif (
+				candidate_jumps.has(forward)
+				or candidate_jumps.has(backward)
+			):
 				movement = "jump"
 
 			else:
 				movement = "walk"
 
-
 		steps.append({
-			"position": astar.get_point_position(current_id),
+			"position": path_graph.get_point_position(current_id),
 			"movement": movement
 		})
 

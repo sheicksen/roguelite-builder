@@ -108,7 +108,10 @@ func _physics_process(delta: float) -> void:
 			if navigation_steps.is_empty() or repath_timer <= 0.0:
 				navigation_steps = terrain_navigation.get_navigation_steps(
 					global_position,
-					target.global_position
+					target.global_position,
+					can_jump,
+					float(move_speed),
+					jump_height
 				)
 				navigation_step_index = 0
 				repath_timer = repath_interval

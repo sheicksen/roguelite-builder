@@ -555,3 +555,370 @@ func test_drop_creates_directional_navigation_route() -> void:
 		0,
 		"The drop must not automatically create an upward route."
 	)
+
+func test_non_jumping_enemy_avoids_jump_routes() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Two platforms separated by one empty tile.
+	var start_cell := Vector2i(130, 130)
+	var landing_cell := Vector2i(132, 130)
+
+	# A connected walking tile on the landing side.
+	var walking_cell := Vector2i(133, 130)
+
+	room.place_solid_tile(start_cell)
+	room.place_solid_tile(landing_cell)
+	room.place_solid_tile(walking_cell)
+
+	navigation.rebuild_navigation()
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[start_cell]
+	)
+
+	var landing: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[landing_cell]
+	)
+
+	var walking: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[walking_cell]
+	)
+
+	# Jumping enemies should cross the gap.
+	var jumper_route := navigation.get_navigation_steps(
+		start,
+		landing,
+		true
+	)
+
+	assert_eq(jumper_route.size(), 2)
+
+	if jumper_route.size() == 2:
+		assert_eq(jumper_route[1]["movement"], "jump")
+
+	# Non-jumping enemies cannot cross the gap.
+	var non_jumper_route := navigation.get_navigation_steps(
+		start,
+		landing,
+		false
+	)
+
+	assert_eq(non_jumper_route.size(), 0)
+
+	# But non-jumping enemies can still walk normally.
+	var walking_route := navigation.get_navigation_steps(
+		landing,
+		walking,
+		false
+	)
+
+	assert_eq(walking_route.size(), 2)
+
+	if walking_route.size() == 2:
+		assert_eq(walking_route[1]["movement"], "walk")
+
+func test_jump_validation_respects_enemy_capabilities() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	var start := Vector2(0, 0)
+	var landing := Vector2(32, -32)
+	var gravity: float = 980.0
+
+	# A normal enemy can reach this elevated destination.
+	var normal_enemy: bool = navigation.is_jump_arc_clear(
+		start,
+		landing,
+		gravity,
+		100.0,
+		64.0
+	)
+
+	assert_true(normal_enemy)
+
+	# An enemy with a low jump height cannot reach it.
+	var heavy_enemy: bool = navigation.is_jump_arc_clear(
+		start,
+		landing,
+		gravity,
+		100.0,
+		16.0
+	)
+
+	assert_false(heavy_enemy)
+
+	# An enemy that moves too slowly cannot reach it.
+	var slow_enemy: bool = navigation.is_jump_arc_clear(
+		start,
+		landing,
+		gravity,
+		10.0,
+		64.0
+	)
+
+	assert_false(slow_enemy)
+
+func test_navigation_respects_individual_jump_capabilities() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create a platform 32 pixels above the lower floor.
+	var lower_cell := Vector2i(140, 140)
+	var upper_cell := Vector2i(141, 139)
+
+	room.place_solid_tile(lower_cell)
+	room.place_platform_tile(upper_cell)
+
+	navigation.rebuild_navigation()
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[lower_cell]
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[upper_cell]
+	)
+
+	# A standard enemy should reach the higher platform.
+	var normal_route := navigation.get_navigation_steps(
+		start, destination, true, 100.0, 64.0
+	)
+
+	assert_eq(normal_route.size(), 2)
+
+	if normal_route.size() == 2:
+		assert_eq(normal_route[1]["movement"], "jump")
+
+	# A heavy enemy cannot jump high enough.
+	var heavy_route := navigation.get_navigation_steps(
+		start, destination, true, 100.0, 16.0
+	)
+
+	assert_eq(heavy_route.size(), 0)
+
+	# A very slow enemy cannot cross the distance.
+	var slow_route := navigation.get_navigation_steps(
+		start, destination, true, 10.0, 64.0
+	)
+
+	assert_eq(slow_route.size(), 0)
+
+	# An enemy with jumping disabled cannot jump.
+	var no_jump_route := navigation.get_navigation_steps(
+		start, destination, false, 100.0, 64.0
+	)
+
+	assert_eq(no_jump_route.size(), 0)
+
+func test_drop_respects_enemy_movement_speed() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create an upper ledge and a lower landing.
+	var upper_cell := Vector2i(150, 150)
+	var lower_cell := Vector2i(152, 152)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[upper_cell]
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[lower_cell]
+	)
+
+	var gravity: float = 980.0
+
+	# A normal enemy can reach the landing.
+	assert_true(
+		navigation.is_drop_path_clear(
+			start,
+			destination,
+			gravity,
+			100.0
+		),
+		"Normal-speed enemy should complete the drop."
+	)
+
+	# A slow enemy cannot move far enough while falling.
+	assert_false(
+		navigation.is_drop_path_clear(
+			start,
+			destination,
+			gravity,
+			30.0
+		),
+		"Slow enemy should reject an unreachable landing."
+	)
+
+func test_capability_graph_respects_drop_speed() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create an upper platform and a lower landing.
+	var upper_cell := Vector2i(160, 160)
+	var lower_cell := Vector2i(162, 162)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	# A normal-speed enemy should have a drop connection.
+	var normal_graph: AStar2D = navigation.get_capability_graph(
+		100.0,
+		64.0
+	)
+
+	assert_true(
+		normal_graph.are_points_connected(
+			upper_id,
+			lower_id
+		),
+		"Normal enemy should have a valid drop connection."
+	)
+
+	# A slow enemy should not have that connection.
+	var slow_graph: AStar2D = navigation.get_capability_graph(
+		30.0,
+		64.0
+	)
+
+	assert_false(
+		slow_graph.are_points_connected(
+			upper_id,
+			lower_id
+		),
+		"Slow enemy should not receive an unreachable drop."
+	)
+
+func test_fast_enemy_custom_jump_is_labeled() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Default navigation is too slow to cross this gap.
+	navigation.debug_move_speed = 40.0
+
+	var start_cell := Vector2i(180, 180)
+	var landing_cell := Vector2i(182, 180)
+
+	room.place_solid_tile(start_cell)
+	room.place_solid_tile(landing_cell)
+
+	navigation.rebuild_navigation()
+
+	var start_id: int = navigation.point_ids_by_cell[start_cell]
+	var landing_id: int = navigation.point_ids_by_cell[landing_cell]
+
+	var start: Vector2 = navigation.astar.get_point_position(start_id)
+	var landing: Vector2 = navigation.astar.get_point_position(landing_id)
+
+	# Default graph cannot cross the gap.
+	assert_eq(
+		navigation.get_navigation_path(start, landing).size(),
+		0
+	)
+
+	# Fast enemy has sufficient horizontal speed.
+	var fast_route := navigation.get_navigation_steps(
+		start, landing, true, 150.0, 64.0
+	)
+
+	assert_eq(fast_route.size(), 2)
+
+	if fast_route.size() == 2:
+		assert_eq(fast_route[1]["movement"], "jump")
+
+func test_non_jumping_enemy_uses_speed_aware_drops() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	var upper_cell := Vector2i(190, 190)
+	var lower_cell := Vector2i(192, 192)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[upper_cell]
+	)
+
+	var lower: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[lower_cell]
+	)
+
+	# A normal-speed enemy can drop, even without jumping.
+	var normal_route := navigation.get_navigation_steps(
+		upper, lower, false, 100.0, 0.0
+	)
+
+	assert_eq(normal_route.size(), 2)
+
+	if normal_route.size() == 2:
+		assert_eq(normal_route[1]["movement"], "drop")
+
+	# A slow enemy cannot reach the landing.
+	var slow_route := navigation.get_navigation_steps(
+		upper, lower, false, 30.0, 0.0
+	)
+
+	assert_eq(slow_route.size(), 0)
