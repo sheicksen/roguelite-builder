@@ -27,6 +27,12 @@ var point_ids_by_cell: Dictionary = {}
 # Stores possible jump connections between navigation points.
 var candidate_jumps: Array[Vector2i] = []
 
+# Possible downward connections between platforms.
+var candidate_drops: Array[Vector2i] = []
+
+# Validated drop connections used by A*.
+var drop_connections: Array[Vector2i] = []
+
 # Jump connections that pass our initial distance check.
 # These still need collision and landing validation.
 var jump_connections: Array[Vector2i] = []
@@ -66,6 +72,8 @@ func rebuild_navigation() -> void:
 	point_ids_by_cell.clear()
 	candidate_jumps.clear()
 	jump_connections.clear()
+	candidate_drops.clear()
+	drop_connections.clear()
 
 	var ground_cells: Dictionary = {}
 
@@ -162,6 +170,42 @@ func rebuild_navigation() -> void:
 				if not candidate_jumps.has(connection):
 					candidate_jumps.append(connection)
 
+
+	# Find possible drops from exposed platform edges.
+	for cell in point_ids_by_cell.keys():
+		# Check both directions.
+		for direction in [-1, 1]:
+			var edge_cell: Vector2i = (
+				cell + Vector2i(direction, 0)
+			)
+
+			# A drop must begin at an exposed edge.
+			if _is_occupied(edge_cell):
+				continue
+
+			# Search up to three tiles horizontally
+			# and three tiles below the starting platform.
+			for horizontal_distance in range(1, 4):
+				for drop_depth in range(1, 4):
+					var landing_cell: Vector2i = (
+						cell + Vector2i(
+							direction * horizontal_distance,
+							drop_depth
+						)
+					)
+
+					if not point_ids_by_cell.has(landing_cell):
+						continue
+
+					var from_id: int = point_ids_by_cell[cell]
+					var to_id: int = point_ids_by_cell[landing_cell]
+
+					var connection := Vector2i(from_id, to_id)
+
+					if not candidate_drops.has(connection):
+						candidate_drops.append(connection)
+
+
 	# Use the project's default gravity for our initial test.
 	var gravity: float = float(
 		ProjectSettings.get_setting("physics/2d/default_gravity")
@@ -173,40 +217,33 @@ func rebuild_navigation() -> void:
 		gravity
 	)
 
-	# Check each candidate gap.
-	# Evaluate potential jumps and add reachable ones to AStar.
+
+	# Validate horizontal gaps and jumps to higher platforms.
 	for connection in candidate_jumps:
 		var start: Vector2 = astar.get_point_position(connection.x)
 		var end: Vector2 = astar.get_point_position(connection.y)
 
-		# For now, only allow jumps between equal-height platforms.
-		if absf(start.y - end.y) > 1.0:
+		# Godot's Y coordinates increase downward.
+		var same_height: bool = absf(end.y - start.y) <= 1.0
+		var upward_jump: bool = end.y < start.y - 1.0
+
+		# Downward movement will have its own logic later.
+		if not same_height and not upward_jump:
 			continue
 
-		var distance: float = absf(end.x - start.x)
-		var within_range: bool = distance <= max_jump_distance
+		# Validate jump distance, flight time, and clearance.
+		if not is_jump_arc_clear(start, end, gravity):
+			continue
 
-		print(
-			"Jump distance: ", distance,
-			" | Maximum: ", max_jump_distance,
-			" | Within range: ", within_range
+		# Same-height jumps work in both directions.
+		# Upward jumps are directional.
+		astar.connect_points(
+			connection.x,
+			connection.y,
+			same_height
 		)
 
-
-		var clear_path: bool = false
-
-		if within_range:
-			clear_path = is_jump_arc_clear(
-				start,
-				end,
-				gravity
-			)
-
-		print("Jump arc clear: ", clear_path)
-
-		if within_range and clear_path:
-			astar.connect_points(connection.x, connection.y, true)
-			jump_connections.append(connection)
+		jump_connections.append(connection)
 
 	print("Provisional jump connections: ", jump_connections.size())
 
@@ -225,6 +262,31 @@ func rebuild_navigation() -> void:
 			walking_connections += 1
 
 	print("Walking connections: ", walking_connections)
+
+	# Validate possible drops and connect reachable platforms.
+	for connection in candidate_drops:
+		var start: Vector2 = astar.get_point_position(
+			connection.x
+		)
+
+		var destination: Vector2 = astar.get_point_position(
+			connection.y
+		)
+
+		# Reject drops that are too far away or obstructed.
+		if not is_drop_path_clear(start, destination, gravity):
+			continue
+
+		# Create a one-way route from higher to lower.
+		astar.connect_points(
+			connection.x,
+			connection.y,
+			false
+		)
+
+		drop_connections.append(connection)
+
+	print("Valid drop connections: ", drop_connections.size())
 
 	# Test a route between the leftmost and rightmost points.
 	debug_path.clear()
@@ -433,11 +495,8 @@ func is_position_blocked(world_position: Vector2) -> bool:
 	return false
 
 
-## Simulates a same-height jump and checks for obstacles.
-
-## Checks whether a jump can reach its destination
-## without passing through blocking terrain.
-## Supports destinations at different heights.
+## Validates a jump using a vertical-first approach
+## for elevated destinations.
 func is_jump_arc_clear(
 	start: Vector2,
 	end: Vector2,
@@ -446,7 +505,6 @@ func is_jump_arc_clear(
 	if gravity <= 0.0 or debug_jump_height <= 0.0:
 		return false
 
-	# Calculate when the enemy reaches the landing height.
 	var flight_time: float = estimate_jump_landing_time(
 		start.y,
 		end.y,
@@ -454,45 +512,159 @@ func is_jump_arc_clear(
 		gravity
 	)
 
-	# Reject destinations that are too high.
 	if flight_time <= 0.0:
 		return false
 
-	# Determine the horizontal speed required to land.
-	var horizontal_speed: float = (
-		end.x - start.x
-	) / flight_time
-
-	# Reject destinations beyond movement capabilities.
-	if absf(horizontal_speed) > debug_move_speed:
-		return false
-
-	# Calculate the initial upward velocity.
 	var jump_speed: float = sqrt(
 		2.0 * gravity * debug_jump_height
 	)
 
-	# Sample the jump trajectory for collisions.
-	var samples: int = 24
+	var horizontal_delay: float = 0.0
+
+	# For higher platforms, wait until the enemy's
+	# feet clear the landing surface before moving sideways.
+	if end.y < start.y - 1.0:
+		var required_rise: float = start.y - end.y + 1.0
+
+		var discriminant: float = (
+			jump_speed * jump_speed
+			- 2.0 * gravity * required_rise
+		)
+
+		if discriminant < 0.0:
+			return false
+
+		# Time when the enemy first reaches this height.
+		horizontal_delay = (
+			jump_speed - sqrt(discriminant)
+		) / gravity
+
+	var horizontal_distance: float = absf(end.x - start.x)
+	var horizontal_time: float = flight_time - horizontal_delay
+
+	# Ensure sufficient time remains to move horizontally.
+	if horizontal_distance > debug_move_speed * horizontal_time:
+		return false
+
+	var horizontal_direction: float = signf(end.x - start.x)
+
+	# Sample the same vertical-first trajectory.
+	var samples: int = 48
 
 	for i in range(1, samples + 1):
 		var time: float = (
 			flight_time * float(i) / float(samples)
 		)
 
-		var position: Vector2 = Vector2(
-			start.x + horizontal_speed * time,
+		var moving_time: float = maxf(
+			time - horizontal_delay,
+			0.0
+		)
+
+		var distance_traveled: float = minf(
+			horizontal_distance,
+			debug_move_speed * moving_time
+		)
+
+		var position := Vector2(
+			start.x + horizontal_direction * distance_traveled,
 			start.y - jump_speed * time
 				+ 0.5 * gravity * time * time
 		)
 
 		if is_position_blocked(position):
-			print(
-				"Jump blocked at sample ",
-				i,
-				": ",
-				position
-			)
+			print("Jump blocked at sample ", i, ": ", position)
+			return false
+
+	return true
+
+
+## Checks whether an enemy can walk off an edge
+## and fall safely toward a lower platform.
+func is_drop_path_clear(
+	start: Vector2,
+	end: Vector2,
+	gravity: float
+) -> bool:
+	if gravity <= 0.0 or debug_move_speed <= 0.0:
+		return false
+
+	# A drop must lead to a lower destination.
+	if end.y <= start.y:
+		return false
+
+	var direction: float = signf(end.x - start.x)
+
+	# Vertical drop-through movement will be handled separately.
+	if direction == 0.0:
+		return false
+
+	var tile_width: float = float(
+		room.solid_terrain.tile_set.tile_size.x
+	)
+
+	# Walk far enough that the enemy's entire collision box
+	# is beyond the edge of the starting tile.
+	var launch_distance: float = (
+		tile_width / 2.0
+		+ debug_enemy_half_width
+		+ 1.0
+	)
+
+	var launch_position := Vector2(
+		start.x + direction * launch_distance,
+		start.y
+	)
+
+	# Horizontal distance remaining after leaving the edge.
+	var remaining_distance: float = (
+		(end.x - launch_position.x) * direction
+	)
+
+	if remaining_distance < 0.0:
+		return false
+
+	# Calculate falling time using gravity.
+	var fall_height: float = end.y - start.y
+	var fall_time: float = sqrt(
+		2.0 * fall_height / gravity
+	)
+
+	# Reject destinations that cannot be reached horizontally.
+	if remaining_distance > debug_move_speed * fall_time:
+		return false
+
+	# Check for obstacles while moving off the ledge.
+	for i in range(1, 17):
+		var fraction: float = float(i) / 16.0
+		var position: Vector2 = start.lerp(
+			launch_position,
+			fraction
+		)
+
+		if is_position_blocked(position):
+			return false
+
+	# Simulate falling toward the lower platform.
+	var samples: int = 48
+
+	for i in range(1, samples + 1):
+		var time: float = (
+			fall_time * float(i) / float(samples)
+		)
+
+		var horizontal_movement: float = minf(
+			remaining_distance,
+			debug_move_speed * time
+		)
+
+		var position := Vector2(
+			launch_position.x + direction * horizontal_movement,
+			start.y + 0.5 * gravity * time * time
+		)
+
+		if is_position_blocked(position):
+			print("Drop blocked at sample ", i, ": ", position)
 			return false
 
 	return true
@@ -537,10 +709,17 @@ func get_navigation_steps(
 				previous_id
 			)
 
-			if jump_connections.has(forward) or jump_connections.has(backward):
+			# Check whether this connection is a downward drop.
+			if drop_connections.has(forward):
+				movement = "drop"
+
+			# Otherwise, check whether jumping is required.
+			elif jump_connections.has(forward) or jump_connections.has(backward):
 				movement = "jump"
+
 			else:
 				movement = "walk"
+
 
 		steps.append({
 			"position": astar.get_point_position(current_id),

@@ -26,6 +26,10 @@ var navigation_step_index: int = 0
 var jump_reported: bool = false
 var jump_in_progress: bool = false
 var jump_was_airborne: bool = false
+var jump_is_upward: bool = false
+var jump_horizontal_unlocked: bool = false
+var drop_in_progress: bool = false
+var drop_was_airborne: bool = false
 
 @export_range(0.2, 3.0, 0.1)
 var repath_interval: float = 0.75
@@ -86,7 +90,7 @@ func _physics_process(delta: float) -> void:
 	var distance = global_position.distance_to(target.global_position)
 	var direction = target.global_position.x - global_position.x
 
-	if jump_in_progress:
+	if jump_in_progress or drop_in_progress:
 		# Finish an active jump before returning to combat decisions.
 		follow_navigation_steps()
 
@@ -132,7 +136,12 @@ func _physics_process(delta: float) -> void:
 
 
 	# Prevent walking off platforms.
-	if is_on_floor() and not jump_in_progress and absf(velocity.x) > 0.0:
+	if (
+		is_on_floor()
+		and not jump_in_progress
+		and not drop_in_progress
+		and absf(velocity.x) > 0.0
+	):
 		# Check for ground in the direction of movement.
 		ground_ahead.position.x = signf(velocity.x) * 24.0
 		ground_ahead.force_raycast_update()
@@ -175,10 +184,19 @@ func follow_navigation_steps() -> void:
 		var landing: Vector2 = navigation_steps[navigation_step_index]["position"]
 		var horizontal_distance: float = landing.x - global_position.x
 
-		if absf(horizontal_distance) > waypoint_tolerance:
+		# For upward jumps, wait until the enemy has
+		# risen above the landing platform.
+		if jump_is_upward and not jump_horizontal_unlocked:
+			if global_position.y <= landing.y - 1.0:
+				jump_horizontal_unlocked = true
+				print("Cleared ledge. Moving horizontally.")
+
+		# Move sideways only after clearance.
+		if jump_horizontal_unlocked and absf(horizontal_distance) > waypoint_tolerance:
 			velocity.x = signf(horizontal_distance) * move_speed
 		else:
 			velocity.x = 0.0
+
 
 		# Make sure the enemy has actually left the floor.
 		if not is_on_floor():
@@ -203,11 +221,64 @@ func follow_navigation_steps() -> void:
 
 		return
 
+
+	# Continue a deliberate drop until landing.
+	if drop_in_progress:
+		var landing: Vector2 = navigation_steps[navigation_step_index]["position"]
+		var horizontal_distance: float = landing.x - global_position.x
+
+		# Remember when the enemy leaves its current platform.
+		if not is_on_floor():
+			drop_was_airborne = true
+
+		# Detect landing after the enemy has been airborne.
+		elif drop_was_airborne:
+			drop_in_progress = false
+			drop_was_airborne = false
+			velocity.x = 0.0
+
+			if (
+				absf(horizontal_distance) <= waypoint_tolerance
+				and absf(global_position.y - landing.y) <= 16.0
+			):
+				print("Drop landed at: ", global_position)
+				navigation_step_index += 1
+			else:
+				print("Drop missed landing. Recalculating route.")
+				navigation_steps.clear()
+				navigation_step_index = 0
+
+			repath_timer = 0.0
+			return
+
+		# Walk off the upper edge and move toward the
+		# lower platform while falling.
+		if absf(horizontal_distance) > waypoint_tolerance:
+			velocity.x = signf(horizontal_distance) * move_speed
+		else:
+			velocity.x = 0.0
+
+		return
+
+
 	# Process walking instructions or start a jump.
 	while navigation_step_index < navigation_steps.size():
 		var step: Dictionary = navigation_steps[navigation_step_index]
 		var waypoint: Vector2 = step["position"]
 		var movement: String = step["movement"]
+
+		# Begin a controlled drop toward a lower platform.
+		if movement == "drop":
+			drop_in_progress = true
+			drop_was_airborne = not is_on_floor()
+
+			velocity.x = signf(
+				waypoint.x - global_position.x
+			) * move_speed
+
+			print("Drop started toward: ", waypoint)
+			return
+
 
 		# Start jumping toward the landing waypoint.
 		if movement == "jump":
@@ -226,9 +297,20 @@ func follow_navigation_steps() -> void:
 			if try_jump():
 				jump_in_progress = true
 				jump_was_airborne = false
-				velocity.x = signf(
-					waypoint.x - global_position.x
-				) * move_speed
+
+				# Determine whether the destination is higher.
+				jump_is_upward = waypoint.y < global_position.y - 1.0
+
+				# Same-height jumps can move sideways immediately.
+				# Upward jumps must first clear the ledge.
+				jump_horizontal_unlocked = not jump_is_upward
+
+				if jump_horizontal_unlocked:
+					velocity.x = signf(
+						waypoint.x - global_position.x
+					) * move_speed
+				else:
+					velocity.x = 0.0
 
 				print("Jump launched toward: ", waypoint)
 
@@ -272,7 +354,7 @@ func _on_navigation_rebuilt() -> void:
 	repath_timer = 0.0
 
 	# Don't interrupt an enemy already in midair.
-	if jump_in_progress:
+	if jump_in_progress or drop_in_progress:
 		return
 
 	# Discard the old path.

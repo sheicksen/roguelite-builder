@@ -272,3 +272,286 @@ func test_elevated_jump_arc_validation() -> void:
 			gravity
 		)
 	)
+
+func test_upward_jump_creates_directional_route() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create a lower solid floor and an elevated platform.
+	var lower_cell := Vector2i(80, 80)
+	var upper_cell := Vector2i(81, 79)
+
+	room.place_solid_tile(lower_cell)
+	room.place_platform_tile(upper_cell)
+
+	navigation.rebuild_navigation()
+
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+
+	var lower_position: Vector2 = (
+		navigation.astar.get_point_position(lower_id)
+	)
+
+	var upper_position: Vector2 = (
+		navigation.astar.get_point_position(upper_id)
+	)
+
+	# An upward path should now exist.
+	var upward_steps: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			lower_position,
+			upper_position
+		)
+	)
+
+	assert_eq(upward_steps.size(), 2)
+
+	if upward_steps.size() == 2:
+		assert_eq(upward_steps[1]["movement"], "jump")
+
+	# The reverse direction should not be connected yet.
+	var downward_steps: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			upper_position,
+			lower_position
+		)
+	)
+
+	assert_eq(
+		downward_steps.size(),
+		0,
+		"An upward jump should not automatically create a drop route."
+	)
+
+func test_jump_onto_solid_elevated_ledge() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.debug_move_speed = 100.0
+	navigation.debug_jump_height = 64.0
+
+	# Create a 32-pixel-high solid ledge.
+	var lower_cell := Vector2i(90, 90)
+	var upper_cell := Vector2i(91, 89)
+
+	room.place_solid_tile(lower_cell)
+	room.place_solid_tile(upper_cell)
+
+	navigation.rebuild_navigation()
+
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		lower_id
+	)
+	var destination: Vector2 = navigation.astar.get_point_position(
+		upper_id
+	)
+
+	# The vertical-first jump should now be reachable.
+	assert_true(
+		navigation.is_jump_arc_clear(
+			start,
+			destination,
+			980.0
+		)
+	)
+
+	# A* should produce an upward jump instruction.
+	var steps: Array[Dictionary] = navigation.get_navigation_steps(
+		start,
+		destination
+	)
+
+	assert_eq(steps.size(), 2)
+
+	if steps.size() == 2:
+		assert_eq(steps[1]["movement"], "jump")
+
+func test_detects_downward_drop_candidate() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create two platforms at different heights.
+	var upper_cell := Vector2i(100, 100)
+	var lower_cell := Vector2i(102, 102)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	# Generate the navigation graph.
+	navigation.rebuild_navigation()
+
+	assert_true(navigation.point_ids_by_cell.has(upper_cell))
+	assert_true(navigation.point_ids_by_cell.has(lower_cell))
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	# Verify a downward connection was detected.
+	var drop_connection := Vector2i(upper_id, lower_id)
+
+	assert_true(
+		navigation.candidate_drops.has(drop_connection),
+		"Navigation should detect the lower landing platform."
+	)
+
+func test_drop_trajectory_validation() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.debug_move_speed = 100.0
+
+	# Create a platform two tiles above another.
+	var upper_cell := Vector2i(110, 110)
+	var lower_cell := Vector2i(112, 112)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		upper_id
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		lower_id
+	)
+
+	var gravity: float = 980.0
+
+	# The unobstructed drop should be reachable.
+	assert_true(
+		navigation.is_drop_path_clear(
+			start,
+			destination,
+			gravity
+		),
+		"Enemy should be able to reach the lower platform."
+	)
+
+	# Add an obstacle in the falling path.
+	room.place_solid_tile(Vector2i(111, 111))
+
+	# The obstacle should block the drop.
+	assert_false(
+		navigation.is_drop_path_clear(
+			start,
+			destination,
+			gravity
+		),
+		"Enemy should reject a drop blocked by terrain."
+	)
+
+	# An upward destination must not count as a drop.
+	assert_false(
+		navigation.is_drop_path_clear(
+			destination,
+			start,
+			gravity
+		)
+	)
+
+func test_drop_creates_directional_navigation_route() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create an upper platform and a lower landing.
+	var upper_cell := Vector2i(120, 120)
+	var lower_cell := Vector2i(122, 122)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	var upper_position: Vector2 = (
+		navigation.astar.get_point_position(upper_id)
+	)
+
+	var lower_position: Vector2 = (
+		navigation.astar.get_point_position(lower_id)
+	)
+
+	# A valid directional drop connection should exist.
+	var connection := Vector2i(upper_id, lower_id)
+
+	assert_true(
+		navigation.drop_connections.has(connection),
+		"A valid downward connection should exist."
+	)
+
+	# A* should return a route containing a drop instruction.
+	var downward_steps: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			upper_position,
+			lower_position
+		)
+	)
+
+	assert_eq(downward_steps.size(), 2)
+
+	if downward_steps.size() == 2:
+		assert_eq(
+			downward_steps[1]["movement"],
+			"drop",
+			"The route should require dropping."
+		)
+
+	# This arrangement should not provide a reverse route.
+	var upward_steps: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			lower_position,
+			upper_position
+		)
+	)
+
+	assert_eq(
+		upward_steps.size(),
+		0,
+		"The drop must not automatically create an upward route."
+	)
