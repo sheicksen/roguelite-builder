@@ -1,0 +1,163 @@
+[gd_scene format=3 uid="uid://rep87vxpsein"]
+
+[ext_resource type="Script" uid="uid://di7p5yjlyrtn7" path="res://scripts/game_hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://cyd2ifqt0nbnw" path="res://scripts/pause_menu.gd" id="2_n64bn"]
+
+[sub_resource type="Gradient" id="Gradient_jna2d"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_pvo2y"]
+gradient = SubResource("Gradient_jna2d")
+fill_to = Vector2(0.5707071, 0.42929292)
+
+[sub_resource type="Gradient" id="Gradient_n64bn"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_16tl0"]
+gradient = SubResource("Gradient_n64bn")
+
+[sub_resource type="Gradient" id="Gradient_gjmhc"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_37w8k"]
+gradient = SubResource("Gradient_gjmhc")
+
+[sub_resource type="Gradient" id="Gradient_pexd4"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_hqvc3"]
+gradient = SubResource("Gradient_pexd4")
+
+[node name="GameHUD" type="CanvasLayer" unique_id=2121803956]
+script = ExtResource("1_hud")
+
+[node name="HUD_Root" type="Control" parent="." unique_id=613594137]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopLevelLayout" type="HBoxContainer" parent="HUD_Root" unique_id=41634684]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -120.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+
+[node name="LeftPanel" type="PanelContainer" parent="HUD_Root/TopLevelLayout" unique_id=1181792799]
+custom_minimum_size = Vector2(250, 120)
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD_Root/TopLevelLayout/LeftPanel" unique_id=1819957879]
+layout_mode = 2
+alignment = 1
+
+[node name="CorruptionCircle" type="TextureRect" parent="HUD_Root/TopLevelLayout/LeftPanel/HBoxContainer" unique_id=623219447]
+custom_minimum_size = Vector2(90, 90)
+layout_mode = 2
+size_flags_vertical = 4
+texture = SubResource("GradientTexture2D_pvo2y")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PowerupSlotsContainer" type="VBoxContainer" parent="HUD_Root/TopLevelLayout/LeftPanel/HBoxContainer" unique_id=1559985579]
+layout_mode = 2
+alignment = 1
+
+[node name="PowerupSlot1" type="TextureRect" parent="HUD_Root/TopLevelLayout/LeftPanel/HBoxContainer/PowerupSlotsContainer" unique_id=1710040320]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture = SubResource("GradientTexture2D_16tl0")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PowerupSlot2" type="TextureRect" parent="HUD_Root/TopLevelLayout/LeftPanel/HBoxContainer/PowerupSlotsContainer" unique_id=798447067]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture = SubResource("GradientTexture2D_37w8k")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PowerupSlot3" type="TextureRect" parent="HUD_Root/TopLevelLayout/LeftPanel/HBoxContainer/PowerupSlotsContainer" unique_id=547197395]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture = SubResource("GradientTexture2D_hqvc3")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CenterBarContainer" type="VBoxContainer" parent="HUD_Root/TopLevelLayout" unique_id=2027440399]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HUD_Root/TopLevelLayout/CenterBarContainer" unique_id=278926271]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+value = 100.0
+
+[node name="StaminaBar" type="ProgressBar" parent="HUD_Root/TopLevelLayout/CenterBarContainer" unique_id=1733952456]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+value = 100.0
+
+[node name="RightPanel" type="PanelContainer" parent="HUD_Root/TopLevelLayout" unique_id=872653989]
+custom_minimum_size = Vector2(200, 120)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD_Root/TopLevelLayout/RightPanel" unique_id=1516435207]
+layout_mode = 2
+alignment = 1
+
+[node name="DollarLabel" type="Label" parent="HUD_Root/TopLevelLayout/RightPanel/VBoxContainer" unique_id=1348141713]
+layout_mode = 2
+text = "$: 0"
+
+[node name="CentLabel" type="Label" parent="HUD_Root/TopLevelLayout/RightPanel/VBoxContainer" unique_id=1140216236]
+layout_mode = 2
+text = "¢: 0"
+
+[node name="PauseMenu" type="Control" parent="HUD_Root" unique_id=224505205]
+process_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("2_n64bn")
+
+[node name="backgroundDim" type="ColorRect" parent="HUD_Root/PauseMenu" unique_id=1234180095]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 3.0
+offset_right = 1154.0
+offset_bottom = 650.0
+color = Color(0, 0, 0, 0.09803922)
+
+[node name="CenterContainer" type="CenterContainer" parent="HUD_Root/PauseMenu" unique_id=673637980]
+layout_mode = 0
+offset_left = 427.0
+offset_top = 250.0
+offset_right = 763.0
+offset_bottom = 452.0
+
+[node name="MenuContainer" type="VBoxContainer" parent="HUD_Root/PauseMenu/CenterContainer" unique_id=685941469]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="HUD_Root/PauseMenu/CenterContainer/MenuContainer" unique_id=211542625]
+layout_mode = 2
+text = "  Paused
+"
+
+[node name="ResumeButton" type="Button" parent="HUD_Root/PauseMenu/CenterContainer/MenuContainer" unique_id=2052296729]
+layout_mode = 2
+text = "Resume"
+
+[node name="SettingsButton" type="Button" parent="HUD_Root/PauseMenu/CenterContainer/MenuContainer" unique_id=1332470685]
+layout_mode = 2
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="HUD_Root/PauseMenu/CenterContainer/MenuContainer" unique_id=1562696787]
+layout_mode = 2
+text = "Quit"

@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://cpmb8c2lts1vn"]
+
+[ext_resource type="Script" uid="uid://buc1dmjce4716" path="res://scripts/obstacle.gd" id="1_ikqhk"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_qgrd7"]
+
+[node name="ObstacleDemo" type="Node2D" unique_id=873507336]
+
+[node name="Area2D" type="Area2D" parent="." unique_id=657611856]
+script = ExtResource("1_ikqhk")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=196640010]
+shape = SubResource("CircleShape2D_qgrd7")
