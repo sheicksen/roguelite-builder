@@ -30,6 +30,8 @@ var jump_is_upward: bool = false
 var jump_horizontal_unlocked: bool = false
 var drop_in_progress: bool = false
 var drop_was_airborne: bool = false
+var drop_direction: float = 0.0
+
 
 @export_range(0.2, 3.0, 0.1)
 var repath_interval: float = 0.75
@@ -254,8 +256,14 @@ func follow_navigation_steps() -> void:
 			repath_timer = 0.0
 			return
 
-		# Walk off the upper edge and move toward the
-		# lower platform while falling.
+		# Keep moving in the original direction until the
+		# enemy has completely left the upper platform.
+		# Do not apply waypoint tolerance while still grounded.
+		if not drop_was_airborne:
+			velocity.x = drop_direction * move_speed
+			return
+
+		# Once airborne, steer toward the landing position.
 		if absf(horizontal_distance) > waypoint_tolerance:
 			velocity.x = signf(horizontal_distance) * move_speed
 		else:
@@ -275,9 +283,12 @@ func follow_navigation_steps() -> void:
 			drop_in_progress = true
 			drop_was_airborne = not is_on_floor()
 
-			velocity.x = signf(
+			# Remember the direction needed to leave the ledge.
+			drop_direction = signf(
 				waypoint.x - global_position.x
-			) * move_speed
+			)
+
+			velocity.x = drop_direction * move_speed
 
 			print("Drop started toward: ", waypoint)
 			return

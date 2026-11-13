@@ -317,7 +317,9 @@ func test_upward_jump_creates_directional_route() -> void:
 	if upward_steps.size() == 2:
 		assert_eq(upward_steps[1]["movement"], "jump")
 
-	# The reverse direction should not be connected yet.
+
+	# The reverse direction should use a separate drop
+	# connection rather than reversing the upward jump.
 	var downward_steps: Array[Dictionary] = (
 		navigation.get_navigation_steps(
 			upper_position,
@@ -327,9 +329,17 @@ func test_upward_jump_creates_directional_route() -> void:
 
 	assert_eq(
 		downward_steps.size(),
-		0,
-		"An upward jump should not automatically create a drop route."
+		2,
+		"The upper platform should have a valid drop route."
 	)
+
+	if downward_steps.size() == 2:
+		assert_eq(
+			downward_steps[1]["movement"],
+			"drop",
+			"The downward route should be labeled as a drop."
+		)
+
 
 func test_jump_onto_solid_elevated_ledge() -> void:
 	var room: EditableRoom = load(
@@ -922,3 +932,192 @@ func test_non_jumping_enemy_uses_speed_aware_drops() -> void:
 	)
 
 	assert_eq(slow_route.size(), 0)
+
+func test_drop_uses_enemy_speed_not_debug_speed() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create a reachable downward drop.
+	var upper_cell := Vector2i(210, 210)
+	var lower_cell := Vector2i(212, 212)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		upper_id
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		lower_id
+	)
+
+	# Disable the shared debug movement speed.
+	navigation.debug_move_speed = 0.0
+
+	# The enemy's actual speed should override that setting.
+	var valid_drop: bool = navigation.is_drop_path_clear(
+		start,
+		destination,
+		980.0,
+		100.0
+	)
+
+	assert_true(
+		valid_drop,
+		"Enemy-specific speed should override debug speed."
+	)
+
+func test_capability_graph_cache_invalidates_on_rebuild() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create two separated platforms.
+	var start_cell := Vector2i(220, 220)
+	var landing_cell := Vector2i(222, 220)
+
+	room.place_solid_tile(start_cell)
+	room.place_solid_tile(landing_cell)
+
+	navigation.rebuild_navigation()
+
+	# Request a graph for a standard enemy.
+	var first_graph: AStar2D = navigation.get_capability_graph(
+		100.0,
+		64.0
+	)
+
+	# Request the same configuration again.
+	var cached_graph: AStar2D = navigation.get_capability_graph(
+		100.0,
+		64.0
+	)
+
+	# Both requests should return the same cached object.
+	assert_true(
+		first_graph == cached_graph,
+		"Matching enemy configurations should reuse the cache."
+	)
+
+	assert_eq(first_graph.get_point_count(), 2)
+
+	# Remove the landing platform.
+	room.remove_solid_tile(landing_cell)
+
+	# Rebuild explicitly after the terrain change.
+	navigation.rebuild_navigation()
+
+	# Request a graph with the original configuration.
+	var rebuilt_graph: AStar2D = navigation.get_capability_graph(
+		100.0,
+		64.0
+	)
+
+	# The cache should contain a newly generated graph.
+	assert_false(
+		first_graph == rebuilt_graph,
+		"Terrain changes should invalidate cached graphs."
+	)
+
+	# The removed platform must not appear in the new graph.
+	assert_eq(
+		rebuilt_graph.get_point_count(),
+		1,
+		"Rebuilt graph should only contain remaining terrain."
+	)
+
+func test_adjacent_lower_platform_creates_drop_route() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create two adjacent platforms with a 32-pixel
+	# horizontal distance and a 32-pixel height difference.
+	var upper_cell := Vector2i(230, 230)
+	var lower_cell := Vector2i(229, 231)
+
+	room.place_solid_tile(upper_cell)
+	room.place_solid_tile(lower_cell)
+
+	navigation.rebuild_navigation()
+
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+
+	var upper: Vector2 = navigation.astar.get_point_position(
+		upper_id
+	)
+
+	var lower: Vector2 = navigation.astar.get_point_position(
+		lower_id
+	)
+
+	# The drop must pass the default trajectory validation.
+	assert_true(
+		navigation.drop_connections.has(
+			Vector2i(upper_id, lower_id)
+		),
+		"Adjacent lower platform should allow a drop."
+	)
+
+	# A non-jumping enemy should also be able to drop.
+	var route: Array[Dictionary] = navigation.get_navigation_steps(
+		upper,
+		lower,
+		false,
+		100.0,
+		0.0
+	)
+
+	assert_eq(
+		route.size(),
+		2,
+		"Navigation should find a direct drop route."
+	)
+
+	if route.size() == 2:
+		assert_eq(
+			route[1]["movement"],
+			"drop",
+			"Movement instruction should be a drop."
+		)
+
+	# Without jumping, the reverse route must be unavailable.
+	var reverse_route: Array[Dictionary] = navigation.get_navigation_steps(
+		lower,
+		upper,
+		false,
+		100.0,
+		0.0
+	)
+
+	assert_eq(
+		reverse_route.size(),
+		0,
+		"Drops should not create upward walking connections."
+	)

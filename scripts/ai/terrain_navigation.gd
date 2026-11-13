@@ -50,6 +50,9 @@ var debug_path: PackedVector2Array = PackedVector2Array()
 @export var debug_move_speed: float = 100.0
 @export var debug_jump_height: float = 64.0
 
+@export_group("Debug")
+@export var debug_logging: bool = false
+
 
 func _ready() -> void:
 	# Allow enemies to discover the navigation system.
@@ -215,17 +218,10 @@ func rebuild_navigation() -> void:
 						candidate_drops.append(connection)
 
 
-	# Use the project's default gravity for our initial test.
+	# Get the project's gravity for trajectory validation.
 	var gravity: float = float(
 		ProjectSettings.get_setting("physics/2d/default_gravity")
 	)
-
-	var max_jump_distance: float = estimate_max_jump_distance(
-		debug_move_speed,
-		debug_jump_height,
-		gravity
-	)
-
 
 	# Validate horizontal gaps and jumps to higher platforms.
 	for connection in candidate_jumps:
@@ -254,24 +250,21 @@ func rebuild_navigation() -> void:
 
 		jump_connections.append(connection)
 
-	print("Provisional jump connections: ", jump_connections.size())
+	if debug_logging:
+		print("Provisional jump connections: ", jump_connections.size())
 
-	# Connect adjacent walkable cells horizontally.
-	var walking_connections: int = 0
+	# Add walking connections to both default graphs.
+	var walking_connections: int = _connect_walking_connections(
+		astar
+	)
 
-	for cell in point_ids_by_cell.keys():
-		var neighbor_cell: Vector2i = cell + Vector2i.RIGHT
+	_connect_walking_connections(no_jump_astar)
 
-		# Only connect points if both cells are walkable.
-		if point_ids_by_cell.has(neighbor_cell):
-			var from_id: int = point_ids_by_cell[cell]
-			var to_id: int = point_ids_by_cell[neighbor_cell]
+	if debug_logging:
+		print("Walking connections: ", walking_connections)
 
-			astar.connect_points(from_id, to_id)
-			no_jump_astar.connect_points(from_id, to_id)
-			walking_connections += 1
-
-	print("Walking connections: ", walking_connections)
+	if debug_logging:
+		print("Candidate drop connections: ", candidate_drops.size())
 
 	# Validate possible drops and connect reachable platforms.
 	for connection in candidate_drops:
@@ -303,7 +296,8 @@ func rebuild_navigation() -> void:
 
 		drop_connections.append(connection)
 
-	print("Valid drop connections: ", drop_connections.size())
+	if debug_logging:
+		print("Valid drop connections: ", drop_connections.size())
 
 	# Test a route between the leftmost and rightmost points.
 	debug_path.clear()
@@ -329,14 +323,17 @@ func rebuild_navigation() -> void:
 			)
 
 			for step in steps:
-				if step["movement"] == "jump":
+				if debug_logging and step["movement"] == "jump":
 					print("Navigation requires JUMP to: ", step["position"])
 
-	print("Path contains ", debug_path.size(), " points")
+
+	if debug_logging:
+		print("Path contains ", debug_path.size(), " points")
 
 	queue_redraw()
 
-	print("Generated navigation positions: ", walkable_positions.size())
+	if debug_logging:
+		print("Generated navigation positions: ", walkable_positions.size())
 
 	# Notify enemies that the navigation graph has changed.
 	navigation_rebuilt.emit()
@@ -348,6 +345,28 @@ func _is_occupied(cell: Vector2i) -> bool:
 		or room.has_platform_tile(cell)
 		or room.has_destructible_tile(cell)
 	)
+
+
+## Connects adjacent walkable terrain positions in the given graph.
+## Returns the number of walking connections created.
+func _connect_walking_connections(graph: AStar2D) -> int:
+	var connection_count: int = 0
+
+	for cell in point_ids_by_cell.keys():
+		var neighbor_cell: Vector2i = cell + Vector2i.RIGHT
+
+		# Both cells must have valid standing positions.
+		if not point_ids_by_cell.has(neighbor_cell):
+			continue
+
+		var from_id: int = point_ids_by_cell[cell]
+		var to_id: int = point_ids_by_cell[neighbor_cell]
+
+		# Walking is allowed in both directions.
+		graph.connect_points(from_id, to_id, true)
+		connection_count += 1
+
+	return connection_count
 
 
 ## Draw debug markers at generated standing positions.
@@ -635,17 +654,7 @@ func get_capability_graph(
 		)
 
 	# Walking connections are available to all enemies.
-	for cell in point_ids_by_cell.keys():
-		var neighbor_cell: Vector2i = cell + Vector2i.RIGHT
-
-		if not point_ids_by_cell.has(neighbor_cell):
-			continue
-
-		var from_id: int = point_ids_by_cell[cell]
-		var to_id: int = point_ids_by_cell[neighbor_cell]
-
-		graph.connect_points(from_id, to_id, true)
-
+	_connect_walking_connections(graph)
 
 	# Get the project's gravity for movement validation.
 	var gravity: float = float(
@@ -726,15 +735,13 @@ func is_drop_path_clear(
 	gravity: float,
 	move_speed: float = -1.0
 ) -> bool:
-	# Use this enemy's speed when provided.
-	# Otherwise, preserve the existing debug default.
+	# Use the enemy's movement speed when provided.
+	# Otherwise, use the default debug speed.
 	var actual_speed: float = (
 		debug_move_speed if move_speed < 0.0 else move_speed
 	)
-	if gravity <= 0.0 or actual_speed <= 0.0:
-		return false
 
-	if gravity <= 0.0 or debug_move_speed <= 0.0:
+	if gravity <= 0.0 or actual_speed <= 0.0:
 		return false
 
 	# A drop must lead to a lower destination.
@@ -769,8 +776,15 @@ func is_drop_path_clear(
 		(end.x - launch_position.x) * direction
 	)
 
-	if remaining_distance < 0.0:
+	# Allow the one-pixel clearance margin to place the
+	# enemy slightly beyond the landing tile's center.
+	# The enemy can still land safely at this position.
+	if remaining_distance < -1.0:
 		return false
+
+	# No additional horizontal movement is needed when
+	# the launch position is already over the landing tile.
+	remaining_distance = maxf(remaining_distance, 0.0)
 
 	# Calculate falling time using gravity.
 	var fall_height: float = end.y - start.y
@@ -780,7 +794,15 @@ func is_drop_path_clear(
 
 	# Reject destinations that cannot be reached horizontally.
 	if remaining_distance > actual_speed * fall_time:
+		if debug_logging:
+			print(
+				"DROP REJECTED - insufficient horizontal reach: ",
+				start, " -> ", end,
+				" | Needed: ", remaining_distance,
+				" | Available: ", actual_speed * fall_time
+			)
 		return false
+
 
 	# Check for obstacles while moving off the ledge.
 	for i in range(1, 17):
@@ -791,7 +813,14 @@ func is_drop_path_clear(
 		)
 
 		if is_position_blocked(position):
+			if debug_logging:
+				print(
+					"DROP REJECTED - blocked during launch: ",
+					start, " -> ", end,
+					" | Position: ", position
+				)
 			return false
+
 
 	# Simulate falling toward the lower platform.
 	var samples: int = 48
@@ -812,8 +841,10 @@ func is_drop_path_clear(
 		)
 
 		if is_position_blocked(position):
-			print("Drop blocked at sample ", i, ": ", position)
+			if debug_logging:
+				print("Drop blocked at sample ", i, ": ", position)
 			return false
+
 
 	return true
 
