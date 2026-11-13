@@ -44,6 +44,8 @@ var drop_direction: float = 0.0
 var repath_interval: float = 0.75
 var repath_timer: float = 0.0
 
+# Counts how often this enemy requests a navigation path.
+var path_request_count: int = 0
 
 ## Prints AI navigation information only when debugging is enabled.
 func _debug_log(message: String) -> void:
@@ -141,8 +143,12 @@ func _physics_process(delta: float) -> void:
 			# Fall back to direct movement.
 			velocity.x = signf(direction) * move_speed
 		else:
-			# Recalculate when the route is empty or the timer expires.
-			if navigation_steps.is_empty() or repath_timer <= 0.0:
+			# Recalculate only when the timer expires.
+			# An unreachable target can produce an empty route,
+			# so an empty route alone must not trigger a retry.
+			if repath_timer <= 0.0:
+				path_request_count += 1
+
 				navigation_steps = terrain_navigation.get_navigation_steps(
 					global_position,
 					target.global_position,

@@ -453,7 +453,9 @@ func test_enemy_does_not_jump_to_unreachable_platform() -> void:
 
 	var starting_position: Vector2 = enemy.global_position
 
-	# Activate pursuit.
+	# Activate pursuit and measure navigation requests.
+	var requests_before: int = enemy.path_request_count
+
 	enemy.detection_range = 500.0
 
 	var attempted_jump: bool = false
@@ -469,6 +471,24 @@ func test_enemy_does_not_jump_to_unreachable_platform() -> void:
 
 		if not enemy.is_on_floor():
 			became_airborne = true
+
+	# Measure how many routes were requested during
+	# the 120 physics frames.
+	var requests_made: int = (
+		enemy.path_request_count - requests_before
+	)
+
+	print(
+		"UNREACHABLE ENEMY | Path requests over 120 frames: ",
+		requests_made
+	)
+
+	# An unreachable target should not trigger a
+	# navigation request every physics frame.
+	assert_true(
+		requests_made >= 1 and requests_made <= 4,
+		"Unreachable enemies should respect the repath interval."
+	)
 
 	assert_false(
 		attempted_jump,
