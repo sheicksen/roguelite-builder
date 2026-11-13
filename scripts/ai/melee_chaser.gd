@@ -20,23 +20,58 @@ var melee_ability: Ability
 @export_group("Pathfinding")
 @export var waypoint_tolerance: float = 12.0
 
+@export_group("Debug")
+@export var debug_logging: bool = false
+
+## Types of platform traversal the enemy can perform.
+enum TraversalMode {
+	NONE,
+	JUMP,
+	DROP
+}
+
 var terrain_navigation: TerrainNavigation
 var navigation_steps: Array[Dictionary] = []
 var navigation_step_index: int = 0
 var jump_reported: bool = false
-var jump_in_progress: bool = false
 var jump_was_airborne: bool = false
 var jump_is_upward: bool = false
 var jump_horizontal_unlocked: bool = false
-var drop_in_progress: bool = false
 var drop_was_airborne: bool = false
 var drop_direction: float = 0.0
 
-
 @export_range(0.2, 3.0, 0.1)
 var repath_interval: float = 0.75
-
 var repath_timer: float = 0.0
+
+
+## Prints AI navigation information only when debugging is enabled.
+func _debug_log(message: String) -> void:
+	if debug_logging:
+		print(message)
+
+
+## Returns true while jumping or performing a controlled drop.
+func _is_traversing_platforms() -> bool:
+	return traversal_mode != TraversalMode.NONE
+
+
+## Sets the enemy's current traversal state.
+func _set_traversal_mode(mode: TraversalMode) -> void:
+	traversal_mode = mode
+
+
+# The enemy's current platform traversal state.
+var traversal_mode: TraversalMode = TraversalMode.NONE
+
+# Compatibility properties for existing code and tests.
+var jump_in_progress: bool:
+	get:
+		return traversal_mode == TraversalMode.JUMP
+
+var drop_in_progress: bool:
+	get:
+		return traversal_mode == TraversalMode.DROP
 
 
 func _ready() -> void:
@@ -92,7 +127,7 @@ func _physics_process(delta: float) -> void:
 	var distance = global_position.distance_to(target.global_position)
 	var direction = target.global_position.x - global_position.x
 
-	if jump_in_progress or drop_in_progress:
+	if _is_traversing_platforms():
 		# Finish an active jump before returning to combat decisions.
 		follow_navigation_steps()
 
@@ -118,10 +153,8 @@ func _physics_process(delta: float) -> void:
 				navigation_step_index = 0
 				repath_timer = repath_interval
 
-
 			# Follow the automatically generated instructions.
 			follow_navigation_steps()
-
 
 	else:
 		# Player is within attack range.
@@ -139,14 +172,13 @@ func _physics_process(delta: float) -> void:
 		# Use the equipped melee ability.
 		melee_ability.use_ability(self, facing)
 
-
 	# Prevent walking off platforms.
 	if (
 		is_on_floor()
-		and not jump_in_progress
-		and not drop_in_progress
+		and not _is_traversing_platforms()
 		and absf(velocity.x) > 0.0
 	):
+
 		# Check for ground in the direction of movement.
 		ground_ahead.position.x = signf(velocity.x) * 24.0
 		ground_ahead.force_raycast_update()
@@ -157,14 +189,13 @@ func _physics_process(delta: float) -> void:
 
 			# Report when ledge protection interrupts movement.
 			if not jump_reported:
-				print(
+				_debug_log(str(
 					"GroundAhead stopped movement | Position: ",
 					global_position,
 					" | Navigation step: ",
 					navigation_step_index
-				)
+				))
 				jump_reported = true
-
 
 	# Let BaseEnemy handle gravity and move_and_slide().
 	super._physics_process(delta)
@@ -194,7 +225,7 @@ func follow_navigation_steps() -> void:
 		if jump_is_upward and not jump_horizontal_unlocked:
 			if global_position.y <= landing.y - 1.0:
 				jump_horizontal_unlocked = true
-				print("Cleared ledge. Moving horizontally.")
+				_debug_log("Cleared ledge. Moving horizontally.")
 
 		# Move sideways only after clearance.
 		if jump_horizontal_unlocked and absf(horizontal_distance) > waypoint_tolerance:
@@ -209,7 +240,7 @@ func follow_navigation_steps() -> void:
 
 		# Verify landing before advancing to the next waypoint.
 		elif jump_was_airborne:
-			jump_in_progress = false
+			_set_traversal_mode(TraversalMode.NONE)
 			jump_was_airborne = false
 			velocity.x = 0.0
 
@@ -217,10 +248,11 @@ func follow_navigation_steps() -> void:
 				absf(horizontal_distance) <= waypoint_tolerance
 				and absf(global_position.y - landing.y) <= 16.0
 			):
-				print("Jump landed at: ", global_position)
+
+				_debug_log(str("Jump landed at: ", global_position))
 				navigation_step_index += 1
 			else:
-				print("Jump missed landing. Recalculating route.")
+				_debug_log("Jump missed landing. Recalculating route.")
 				navigation_steps.clear()
 				navigation_step_index = 0
 
@@ -238,7 +270,7 @@ func follow_navigation_steps() -> void:
 
 		# Detect landing after the enemy has been airborne.
 		elif drop_was_airborne:
-			drop_in_progress = false
+			_set_traversal_mode(TraversalMode.NONE)
 			drop_was_airborne = false
 			velocity.x = 0.0
 
@@ -246,10 +278,10 @@ func follow_navigation_steps() -> void:
 				absf(horizontal_distance) <= waypoint_tolerance
 				and absf(global_position.y - landing.y) <= 16.0
 			):
-				print("Drop landed at: ", global_position)
+				_debug_log(str("Drop landed at: ", global_position))
 				navigation_step_index += 1
 			else:
-				print("Drop missed landing. Recalculating route.")
+				_debug_log("Drop missed landing. Recalculating route.")
 				navigation_steps.clear()
 				navigation_step_index = 0
 
@@ -280,7 +312,7 @@ func follow_navigation_steps() -> void:
 
 		# Begin a controlled drop toward a lower platform.
 		if movement == "drop":
-			drop_in_progress = true
+			_set_traversal_mode(TraversalMode.DROP)
 			drop_was_airborne = not is_on_floor()
 
 			# Remember the direction needed to leave the ledge.
@@ -290,7 +322,7 @@ func follow_navigation_steps() -> void:
 
 			velocity.x = drop_direction * move_speed
 
-			print("Drop started toward: ", waypoint)
+			_debug_log(str("Drop started toward: ", waypoint))
 			return
 
 
@@ -300,16 +332,16 @@ func follow_navigation_steps() -> void:
 
 			# Check whether jumping is currently possible.
 			if not jump_reported:
-				print(
+				_debug_log(str(
 					"JUMP STEP | Can jump: ", can_jump,
 					" | On floor: ", is_on_floor(),
 					" | Position: ", global_position,
 					" | Destination: ", waypoint
-				)
+				))
 				jump_reported = true
 
 			if try_jump():
-				jump_in_progress = true
+				_set_traversal_mode(TraversalMode.JUMP)
 				jump_was_airborne = false
 
 				# Determine whether the destination is higher.
@@ -326,7 +358,7 @@ func follow_navigation_steps() -> void:
 				else:
 					velocity.x = 0.0
 
-				print("Jump launched toward: ", waypoint)
+				_debug_log(str("Jump launched toward: ", waypoint))
 
 			return
 
@@ -368,12 +400,13 @@ func _on_navigation_rebuilt() -> void:
 	repath_timer = 0.0
 
 	# Don't interrupt an enemy already in midair.
-	if jump_in_progress or drop_in_progress:
+	if _is_traversing_platforms():
 		return
+
 
 	# Discard the old path.
 	navigation_steps.clear()
 	navigation_step_index = 0
 	jump_reported = false
 
-	print("Navigation changed. Enemy will recalculate its route.")
+	_debug_log("Navigation changed. Enemy will recalculate its route.")

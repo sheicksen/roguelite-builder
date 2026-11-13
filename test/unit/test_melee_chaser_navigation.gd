@@ -484,3 +484,41 @@ func test_enemy_does_not_jump_to_unreachable_platform() -> void:
 		enemy.global_position.distance_to(starting_position) <= 2.0,
 		"Enemy should remain idle without a valid route."
 	)
+
+## Verify that jumping and dropping are mutually exclusive
+## and that compatibility properties reflect the current state.
+func test_traversal_state_transitions() -> void:
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	add_child_autofree(enemy)
+
+	# The enemy should begin without active traversal.
+	assert_eq(
+		enemy.traversal_mode,
+		MeleeChaser.TraversalMode.NONE
+	)
+	assert_false(enemy.jump_in_progress)
+	assert_false(enemy.drop_in_progress)
+
+	# Starting a jump should enable only jumping.
+	enemy._set_traversal_mode(MeleeChaser.TraversalMode.JUMP)
+
+	assert_true(enemy.jump_in_progress)
+	assert_false(enemy.drop_in_progress)
+	assert_true(enemy._is_traversing_platforms())
+
+	# Switching to a drop should automatically end jumping.
+	enemy._set_traversal_mode(MeleeChaser.TraversalMode.DROP)
+
+	assert_false(enemy.jump_in_progress)
+	assert_true(enemy.drop_in_progress)
+	assert_true(enemy._is_traversing_platforms())
+
+	# Ending traversal should clear both properties.
+	enemy._set_traversal_mode(MeleeChaser.TraversalMode.NONE)
+
+	assert_false(enemy.jump_in_progress)
+	assert_false(enemy.drop_in_progress)
+	assert_false(enemy._is_traversing_platforms())
