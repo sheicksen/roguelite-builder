@@ -375,7 +375,8 @@ func test_enemy_does_not_jump_to_unreachable_platform() -> void:
 
 	# Create two adjacent platforms at different heights.
 	var lower_cell := Vector2i(280, 280)
-	var upper_cell := Vector2i(281, 279)
+	var upper_cell := Vector2i(284, 279)
+
 
 	room.place_solid_tile(lower_cell)
 	room.place_solid_tile(upper_cell)
@@ -542,3 +543,83 @@ func test_traversal_state_transitions() -> void:
 	assert_false(enemy.jump_in_progress)
 	assert_false(enemy.drop_in_progress)
 	assert_false(enemy._is_traversing_platforms())
+
+## Verify that a missed jump clears the old route
+## and allows immediate path recalculation.
+func test_missed_jump_resets_repath_timer() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Create a platform for the enemy to stand on.
+	var floor_cell := Vector2i(280, 280)
+	room.place_solid_tile(floor_cell)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var floor_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[floor_cell]
+	)
+
+	# Spawn an enemy without activating pursuit.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.detection_range = 0.0
+	add_child_autofree(enemy)
+	enemy.global_position = floor_position + Vector2(-4.0, -8.0)
+
+	# Allow physics to settle the enemy onto the floor.
+	var started_grounded: bool = false
+
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			started_grounded = true
+			break
+
+	assert_true(started_grounded, "Enemy should begin grounded.")
+
+	if not started_grounded:
+		return
+
+	# Stop automatic updates so we can test the
+	# landing-recovery logic without interference.
+	enemy.set_physics_process(false)
+
+	# Simulate an enemy that was airborne but has
+	# landed too far from its intended waypoint.
+	enemy.navigation_steps.clear()
+	enemy.navigation_steps.append({
+		"position": enemy.global_position + Vector2(200.0, -64.0),
+		"movement": "jump"
+	})
+
+	enemy.navigation_step_index = 0
+	enemy._set_traversal_mode(MeleeChaser.TraversalMode.JUMP)
+	enemy.jump_was_airborne = true
+	enemy.jump_horizontal_unlocked = true
+	enemy.repath_timer = enemy.repath_interval
+
+	# Process the unsuccessful landing.
+	enemy.follow_navigation_steps()
+
+	# The jump should finish and discard the failed route.
+	assert_false(enemy.jump_in_progress)
+	assert_true(enemy.navigation_steps.is_empty())
+
+	# A new path should be allowed immediately.
+	assert_eq(
+		enemy.repath_timer,
+		0.0,
+		"Missed jumps should trigger immediate repathing."
+	)
