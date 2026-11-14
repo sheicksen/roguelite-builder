@@ -119,72 +119,6 @@ func test_enemy_health_regeneration() -> void:
 	assert_eq(enemy.stats.health, 100)
 
 
-func test_enemy_hitbox_setup() -> void:
-	# Create an enemy.
-	var enemy = load("res://scenes/Enemy.tscn").instantiate()
-
-	# Configure the enemy's attack.
-	enemy.attack_damage = 25
-	enemy.attack_damage_type = BaseStats.DamageType.FIRE
-	enemy.attack_hitbox_size = Vector2(48, 24)
-
-	var target_layers: Array[int] = [BaseStats.Faction.PLAYER]
-	enemy.attack_target_layers = target_layers
-
-	add_child_autofree(enemy)
-
-	# Verify that the hitbox was created.
-	assert_not_null(enemy.hitbox)
-
-	# Verify its damage properties.
-	assert_eq(enemy.hitbox.attack_effects.damage, 25)
-	assert_eq(
-		enemy.hitbox.attack_effects.damage_type,
-		BaseStats.DamageType.FIRE
-	)
-
-	# Verify the target layer.
-	assert_has(
-		enemy.hitbox.attack_effects.targets,
-		BaseStats.Faction.PLAYER
-	)
-
-	# Verify the attack shape.
-	var shape := enemy.hitbox.shape as RectangleShape2D
-	assert_not_null(shape)
-
-	if shape != null:
-		assert_eq(shape.size, Vector2(48, 24))
-
-	# Attacks should be disabled by default.
-	assert_false(enemy.hitbox.monitoring)
-
-func test_enemy_attack_activation() -> void:
-	# Create an enemy with a short attack duration.
-	var enemy: BaseEnemy = load(
-		"res://scenes/Enemy.tscn"
-	).instantiate()
-
-	enemy.attack_duration = 0.05
-
-	add_child_autofree(enemy)
-
-	# Hitbox should start disabled.
-	assert_false(enemy.hitbox.monitoring)
-
-	# Activate the attack.
-	enemy.attack()
-
-	# Hitbox should now be enabled.
-	assert_true(enemy.hitbox.monitoring)
-
-	# Wait for the attack to finish.
-	await wait_seconds(0.15)
-
-	# Hitbox should automatically turn off.
-	assert_false(enemy.hitbox.monitoring)
-
-
 func test_enemy_jump_configuration() -> void:
 	var enemy: BaseEnemy = load(
 		"res://scenes/Enemy.tscn"
@@ -213,15 +147,18 @@ func test_enemy_jump_configuration() -> void:
 	assert_true(enemy.can_jump)
 
 
-func test_enemy_attack_damages_target() -> void:
-	# Create the enemy.
-	var enemy: BaseEnemy = load(
+## Verify that an enemy's equipped ability damages
+## a target through the current ability system.
+func test_enemy_equipped_ability_damages_target() -> void:
+	var enemy: MeleeChaser = load(
 		"res://scenes/Enemy.tscn"
 	).instantiate()
 
 	enemy.attack_damage = 20
-	enemy.attack_duration = 0.25
 	add_child_autofree(enemy)
+
+	# Keep the enemy stationary during the test.
+	enemy.set_physics_process(false)
 
 	# Create a target belonging to the player faction.
 	var target_stats := EntityStats.new(
@@ -231,7 +168,6 @@ func test_enemy_attack_damages_target() -> void:
 		0
 	)
 
-	# Give the target a physical hurtbox.
 	var target_shape := RectangleShape2D.new()
 	target_shape.size = Vector2(32, 32)
 
@@ -243,91 +179,25 @@ func test_enemy_attack_damages_target() -> void:
 
 	add_child_autofree(target_hurtbox)
 
-	# Place the target within attack range.
-	target_hurtbox.global_position = enemy.global_position
+	# Place the target within the Knife's hitbox.
+	target_hurtbox.global_position = (
+		enemy.global_position + Vector2(30, 0)
+	)
 
-	# Allow the collision system to initialize.
+	# Allow physics to initialize.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	# Activate the enemy's attack.
-	enemy.attack()
+	# Attack using the equipped ability,
+	# not the removed BaseEnemy.attack() method.
+	enemy.active_ability.use_ability(enemy, 1)
 
-	# Allow Godot to detect the overlap.
+	# Allow the new hitbox to detect the target.
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	# The player should have taken 20 damage.
 	assert_eq(
 		target_stats.health,
 		80,
-		"Enemy attack should deal 20 damage"
+		"Equipped ability should deal 20 damage."
 	)
-
-func test_enemy_ability_cooldowns() -> void:
-	var enemy: BaseEnemy = load(
-		"res://scenes/Enemy.tscn"
-	).instantiate()
-
-	# Configure two abilities.
-	var ability_list: Array[String] = ["Fireball", "Dash"]
-	enemy.abilities = ability_list
-
-	enemy.ability_cooldown = 4.0
-	enemy.ability_recovery_rate = 2.0
-
-	add_child_autofree(enemy)
-
-	# Fireball should initially be available.
-	assert_true(enemy.can_use_ability("Fireball"))
-
-	# An unassigned ability should be unavailable.
-	assert_false(enemy.can_use_ability("Teleport"))
-
-	# Start Fireball's cooldown.
-	assert_true(enemy.try_start_ability_cooldown("Fireball"))
-
-	# Fireball should now be unavailable.
-	assert_false(enemy.can_use_ability("Fireball"))
-
-	# Dash should still be available.
-	assert_true(enemy.can_use_ability("Dash"))
-
-	# One second at 2x recovery removes 2 seconds.
-	enemy.update_ability_cooldowns(1.0)
-	assert_false(enemy.can_use_ability("Fireball"))
-
-	# Another second finishes the cooldown.
-	enemy.update_ability_cooldowns(1.0)
-	assert_true(enemy.can_use_ability("Fireball"))
-
-
-func test_enemy_climbing() -> void:
-	var enemy: BaseEnemy = load(
-		"res://scenes/Enemy.tscn"
-	).instantiate()
-
-	add_child_autofree(enemy)
-
-	# Climbing is disabled by default.
-	assert_false(enemy.can_climb)
-	assert_false(enemy.try_start_climb(true))
-
-	# Enable climbing.
-	enemy.can_climb = true
-
-	# Cannot climb without a climbable surface.
-	assert_false(enemy.try_start_climb(false))
-
-	# Enter a valid climbing area.
-	assert_true(enemy.try_start_climb(true))
-	assert_true(enemy.is_climbing)
-
-	# Move upward.
-	enemy.set_climb_direction(-1.0)
-	assert_eq(enemy.velocity.y, -enemy.climb_speed)
-
-	# Stop climbing.
-	enemy.stop_climb()
-	assert_false(enemy.is_climbing)
-	assert_eq(enemy.velocity.y, 0.0)

@@ -26,7 +26,7 @@ var retreat_range_ratio: float = 0.65
 @export var equipped_ability: AbilityData
 
 var target: Player
-var melee_ability: Ability
+var active_ability: Ability
 
 @onready var ground_ahead: RayCast2D = $GroundAhead
 
@@ -46,7 +46,6 @@ enum TraversalMode {
 var terrain_navigation: TerrainNavigation
 var navigation_steps: Array[Dictionary] = []
 var navigation_step_index: int = 0
-var jump_reported: bool = false
 var jump_was_airborne: bool = false
 var jump_is_upward: bool = false
 var jump_horizontal_unlocked: bool = false
@@ -77,7 +76,7 @@ func _is_target_in_attack_height() -> bool:
 	if not is_instance_valid(target):
 		return false
 
-	var config: AbilityData = melee_ability.data
+	var config: AbilityData = active_ability.data
 	var target_half_height: float = 16.0
 
 	# Use the player's actual hurtbox height when available.
@@ -116,7 +115,7 @@ func _can_attack_target() -> bool:
 	if not is_instance_valid(target):
 		return false
 
-	var config: AbilityData = melee_ability.data
+	var config: AbilityData = active_ability.data
 
 	var distance: float = global_position.distance_to(
 		target.global_position
@@ -182,11 +181,24 @@ func _ready() -> void:
 
 	# Create the appropriate ability type from its configuration.
 	if config is ProjectileData:
-		melee_ability = RangedAbility.new("EnemyAttack", config)
+		active_ability = RangedAbility.new("EnemyAttack", config)
 	else:
-		melee_ability = Ability.new("EnemyAttack", config)
+		active_ability = Ability.new("EnemyAttack", config)
 
-	add_child(melee_ability)
+	add_child(active_ability)
+
+
+## Uses the equipped ability facing toward the player.
+func attack_target() -> void:
+	if not is_instance_valid(target):
+		return
+
+	var direction: float = (
+		target.global_position.x - global_position.x
+	)
+
+	var facing: int = 1 if direction >= 0.0 else -1
+	active_ability.use_ability(self, facing)
 
 
 func _physics_process(delta: float) -> void:
@@ -221,7 +233,7 @@ func _physics_process(delta: float) -> void:
 	var direction = target.global_position.x - global_position.x
 
 	# Determine attack range from the equipped ability.
-	var ability_range: float = melee_ability.data.get_ai_attack_range()
+	var ability_range: float = active_ability.data.get_ai_attack_range()
 
 	if behavior_type == BehaviorType.TURRET:
 		# Turrets remain stationary and never pursue targets.
@@ -230,8 +242,7 @@ func _physics_process(delta: float) -> void:
 		# Attack only when the player is detected and
 		# the equipped ability can actually reach them.
 		if distance <= detection_range and _can_attack_target():
-			var facing: int = 1 if direction >= 0.0 else -1
-			melee_ability.use_ability(self, facing)
+			attack_target()
 
 	elif behavior_type == BehaviorType.RANGED and not _is_traversing_platforms():
 		var preferred_distance: float = (
@@ -266,8 +277,7 @@ func _physics_process(delta: float) -> void:
 
 		# Fire whenever the ability has a viable attack.
 		if distance <= detection_range and can_attack:
-			var facing: int = 1 if direction >= 0.0 else -1
-			melee_ability.use_ability(self, facing)
+			attack_target()
 
 	elif _is_traversing_platforms():
 		# Finish an active jump before returning to combat decisions.
@@ -288,13 +298,7 @@ func _physics_process(delta: float) -> void:
 		# if the player moves away.
 		navigation_steps.clear()
 		navigation_step_index = 0
-		jump_reported = false
-
-		# Determine which direction the enemy is facing.
-		var facing: int = 1 if direction >= 0.0 else -1
-
-		# Use the equipped melee ability.
-		melee_ability.use_ability(self, facing)
+		attack_target()
 
 	# Prevent walking off platforms.
 	if (
@@ -310,17 +314,7 @@ func _physics_process(delta: float) -> void:
 
 		if not ground_ahead.is_colliding():
 			velocity.x = 0.0
-
-			# Report when ledge protection interrupts movement.
-			if not jump_reported:
-				_debug_log(str(
-					"GroundAhead stopped movement | Position: ",
-					global_position,
-					" | Navigation step: ",
-					navigation_step_index
-				))
-				jump_reported = true
-
+			
 	# Let BaseEnemy handle gravity and move_and_slide().
 	super._physics_process(delta)
 
@@ -508,16 +502,6 @@ func follow_navigation_steps() -> void:
 		if movement == "jump":
 			velocity.x = 0.0
 
-			# Check whether jumping is currently possible.
-			if not jump_reported:
-				_debug_log(str(
-					"JUMP STEP | Can jump: ", can_jump,
-					" | On floor: ", is_on_floor(),
-					" | Position: ", global_position,
-					" | Destination: ", waypoint
-				))
-				jump_reported = true
-
 			if try_jump():
 				_set_traversal_mode(TraversalMode.JUMP)
 				jump_was_airborne = false
@@ -585,6 +569,5 @@ func _on_navigation_rebuilt() -> void:
 	# Discard the old path.
 	navigation_steps.clear()
 	navigation_step_index = 0
-	jump_reported = false
 
 	_debug_log("Navigation changed. Enemy will recalculate its route.")
