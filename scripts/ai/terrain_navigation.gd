@@ -162,8 +162,11 @@ func rebuild_navigation() -> void:
 
 	# Find potential upward jumps to nearby higher platforms.
 	for cell in point_ids_by_cell.keys():
-		# Look one or two tiles to either side.
-		for horizontal_offset in [-2, -1, 1, 2]:
+		# Consider jumps up to four tiles horizontally.
+		# Each enemy's movement capabilities determine
+		# whether these connections are actually usable.
+		for horizontal_offset in [-4, -3, -2, -1, 1, 2, 3, 4]:
+
 			# Look for platforms one or two tiles higher.
 			for rise in [1, 2]:
 				var landing_cell: Vector2i = (

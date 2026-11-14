@@ -1121,3 +1121,226 @@ func test_adjacent_lower_platform_creates_drop_route() -> void:
 		0,
 		"Drops should not create upward walking connections."
 	)
+
+
+## Verify that navigation considers elevated jumps
+## spanning three tiles horizontally.
+func test_detects_longer_elevated_jump_candidate() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Place two platforms three tiles apart,
+	# with the destination one tile higher.
+	var lower_cell := Vector2i(220, 220)
+	var upper_cell := Vector2i(223, 219)
+
+	room.place_solid_tile(lower_cell)
+	room.place_platform_tile(upper_cell)
+
+	navigation.rebuild_navigation()
+
+	var lower_id: int = navigation.point_ids_by_cell[lower_cell]
+	var upper_id: int = navigation.point_ids_by_cell[upper_cell]
+
+	# Candidate generation should consider this jump,
+	# even though individual enemies may not be able to make it.
+	assert_true(
+		navigation.candidate_jumps.has(
+			Vector2i(lower_id, upper_id)
+		),
+		"Navigation should consider jumps spanning three tiles."
+	)
+
+
+## Verify that a fast, high-jumping enemy can use a
+## longer jump that a slower enemy cannot.
+func test_long_jump_respects_enemy_capabilities() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Destination is three tiles away and one tile higher.
+	var lower_cell := Vector2i(230, 230)
+	var upper_cell := Vector2i(233, 229)
+
+	room.place_solid_tile(lower_cell)
+	room.place_platform_tile(upper_cell)
+
+	navigation.rebuild_navigation()
+
+	var start: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[lower_cell]
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[upper_cell]
+	)
+
+	# A fast enemy with a high jump should have a route.
+	var fast_route: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			start,
+			destination,
+			true,
+			300.0,
+			128.0
+		)
+	)
+
+	assert_eq(
+		fast_route.size(),
+		2,
+		"Fast enemy should have a longer jump route."
+	)
+
+	if fast_route.size() == 2:
+		assert_eq(
+			fast_route[1]["movement"],
+			"jump",
+			"Longer traversal should be classified as a jump."
+		)
+
+	# A slower enemy should not have the same route.
+	var slow_route: Array[Dictionary] = (
+		navigation.get_navigation_steps(
+			start,
+			destination,
+			true,
+			100.0,
+			64.0
+		)
+	)
+
+	assert_eq(
+		slow_route.size(),
+		0,
+		"Slow enemy should not attempt the longer jump."
+	)
+
+
+## Verify that an enemy can physically perform
+## a three-tile elevated jump.
+func test_enemy_physically_performs_long_jump() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Create platforms three tiles apart,
+	# with the destination one tile higher.
+	var lower_cell := Vector2i(250, 250)
+	var upper_cell := Vector2i(253, 249)
+
+	room.place_solid_tile(lower_cell)
+	room.place_platform_tile(upper_cell)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var lower_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[lower_cell]
+	)
+
+	var upper_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[upper_cell]
+	)
+
+	# Place a stationary player on the upper platform.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = upper_position + Vector2(0, -7)
+	player.set_physics_process(false)
+
+	# Prevent the stationary player's body from acting
+	# as an unintended landing platform.
+	player.collision_layer = 0
+
+	# Create an enemy with greater movement capabilities.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.move_speed = 300
+	enemy.jump_height = 128.0
+	enemy.can_jump = true
+	enemy.detection_range = 0.0
+	enemy.debug_logging = true
+
+	add_child_autofree(enemy)
+	enemy.global_position = lower_position + Vector2(-4.0, -8.0)
+
+	# Wait until the enemy is standing on its starting floor.
+	var started_grounded: bool = false
+
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			started_grounded = true
+			break
+
+	assert_true(started_grounded, "Enemy should start grounded.")
+
+	if not started_grounded:
+		return
+
+	# Begin pursuing the player.
+	enemy.detection_range = 500.0
+
+	var became_airborne: bool = false
+	var landed_above: bool = false
+
+	# Observe the jump for up to four seconds.
+	for frame in range(240):
+		await get_tree().physics_frame
+
+		if not enemy.is_on_floor():
+			became_airborne = true
+
+		if (
+			became_airborne
+			and enemy.is_on_floor()
+			and absf(enemy.global_position.y - upper_position.y) <= 4.0
+			and absf(enemy.global_position.x - upper_position.x) <= 24.0
+		):
+			landed_above = true
+			break
+
+	assert_true(
+		became_airborne,
+		"Enemy should leave the ground during the jump."
+	)
+
+	print(
+		"LONG JUMP RESULT | Enemy: ", enemy.global_position,
+		" | Target: ", upper_position,
+		" | Grounded: ", enemy.is_on_floor(),
+		" | Jumping: ", enemy.jump_in_progress,
+		" | Horizontal unlocked: ", enemy.jump_horizontal_unlocked
+	)
+
+	assert_true(
+		landed_above,
+		"Enemy should land on the distant upper platform."
+	)
