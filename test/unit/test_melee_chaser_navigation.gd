@@ -623,3 +623,254 @@ func test_missed_jump_resets_repath_timer() -> void:
 		0.0,
 		"Missed jumps should trigger immediate repathing."
 	)
+
+
+## Verify that Chaser behavior pursues a player
+## along a continuous, flat platform.
+func test_chaser_pursues_player_on_flat_ground() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Build a continuous floor.
+	for x in range(300, 316):
+		room.place_solid_tile(Vector2i(x, 300))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var enemy_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(303, 300)]
+	)
+
+	var player_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(312, 300)]
+	)
+
+	# Create a stationary player.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = player_position + Vector2(0, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Configure a Chaser enemy.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.behavior_type = MeleeChaser.BehaviorType.CHASER
+	enemy.move_speed = 100
+	enemy.detection_range = 0.0
+
+	add_child_autofree(enemy)
+	enemy.global_position = enemy_position + Vector2(0, -8)
+
+	# Allow the enemy to settle onto the floor.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			break
+
+	assert_true(enemy.is_on_floor())
+
+	if not enemy.is_on_floor():
+		return
+
+	var starting_distance: float = enemy.global_position.distance_to(
+		player.global_position
+	)
+
+	# Enable pursuit.
+	enemy.detection_range = 500.0
+
+	for frame in range(30):
+		await get_tree().physics_frame
+
+	var ending_distance: float = enemy.global_position.distance_to(
+		player.global_position
+	)
+
+	assert_lt(
+		ending_distance,
+		starting_distance,
+		"Chaser should move closer to the player."
+	)
+
+
+## Verify that Ranged behavior retreats when
+## the player is too close and can be attacked.
+func test_ranged_enemy_retreats_when_too_close() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Create a continuous floor with room to retreat.
+	for x in range(300, 316):
+		room.place_solid_tile(Vector2i(x, 300))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var enemy_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(307, 300)]
+	)
+
+	var player_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(308, 300)]
+	)
+
+	# Create a stationary player.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = player_position + Vector2(0, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Configure a ranged-behavior enemy.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.behavior_type = MeleeChaser.BehaviorType.RANGED
+	enemy.move_speed = 100
+	enemy.detection_range = 0.0
+
+	add_child_autofree(enemy)
+	enemy.global_position = enemy_position + Vector2(0, -8)
+
+	# Wait for the enemy to become grounded.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			break
+
+	assert_true(enemy.is_on_floor())
+
+	if not enemy.is_on_floor():
+		return
+
+	# Confirm that the equipped ability can hit the player.
+	assert_true(
+		enemy._can_attack_target(),
+		"Enemy should be able to attack at this distance."
+	)
+
+	if not enemy._can_attack_target():
+		return
+
+	var starting_x: float = enemy.global_position.x
+
+	# Enable ranged behavior.
+	enemy.detection_range = 500.0
+
+	for frame in range(10):
+		await get_tree().physics_frame
+
+	assert_lt(
+		enemy.global_position.x,
+		starting_x,
+		"Ranged enemy should retreat from a nearby player."
+	)
+
+
+## Verify that Turret behavior does not pursue
+## or retreat from a nearby player.
+func test_turret_remains_stationary() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Create a flat floor.
+	for x in range(300, 316):
+		room.place_solid_tile(Vector2i(x, 300))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var enemy_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(307, 300)]
+	)
+
+	var player_position: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[Vector2i(308, 300)]
+	)
+
+	# Create a stationary player.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = player_position + Vector2(0, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Configure the enemy as a Turret.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.behavior_type = MeleeChaser.BehaviorType.TURRET
+	enemy.detection_range = 0.0
+
+	add_child_autofree(enemy)
+	enemy.global_position = enemy_position + Vector2(0, -8)
+
+	# Allow the enemy to settle onto the floor.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			break
+
+	assert_true(enemy.is_on_floor())
+
+	if not enemy.is_on_floor():
+		return
+
+	var starting_x: float = enemy.global_position.x
+
+	# Enable detection and let the AI process.
+	enemy.detection_range = 500.0
+
+	for frame in range(30):
+		await get_tree().physics_frame
+
+	assert_almost_eq(
+		enemy.global_position.x,
+		starting_x,
+		1.0,
+		"Turret should remain stationary near the player."
+	)
+
+	assert_true(
+		enemy.target == player,
+		"Turret should still detect the player."
+	)
