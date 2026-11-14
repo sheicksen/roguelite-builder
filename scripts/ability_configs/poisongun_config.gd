@@ -27,3 +27,7 @@ func _init() -> void:
 	gravity = 950
 	y_velocity = -200
 	piercing = false
+
+	# Effective range used by enemy AI.
+	ai_attack_range = 250.0
+	

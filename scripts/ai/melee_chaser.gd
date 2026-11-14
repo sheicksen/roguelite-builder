@@ -1,13 +1,26 @@
 class_name MeleeChaser
 extends BaseEnemy
 
-## Basic melee enemy AI.
-## Detects the player, approaches them,
-## and attacks when within range.
+## Determines how the enemy positions itself
+## relative to its target.
+enum BehaviorType {
+	CHASER,
+	RANGED,
+	TURRET
+}
 
 @export_group("AI Behavior")
+@export var behavior_type: BehaviorType = BehaviorType.CHASER
 @export var detection_range: float = 250.0
-@export var attack_range: float = 32.0
+
+## Preferred distance as a fraction of ability range.
+## 0.9 means the enemy tries to stay at 90% of its range.
+@export_range(0.1, 1.0, 0.05)
+var preferred_range_ratio: float = 0.9
+
+## Retreat when closer than this fraction of preferred range.
+@export_range(0.1, 1.0, 0.05)
+var retreat_range_ratio: float = 0.65
 
 @export_group("Combat")
 @export var equipped_ability: AbilityData
@@ -58,6 +71,80 @@ func _is_traversing_platforms() -> bool:
 	return traversal_mode != TraversalMode.NONE
 
 
+## Checks whether any ability hitbox overlaps
+## the player's vertical position.
+func _is_target_in_attack_height() -> bool:
+	if not is_instance_valid(target):
+		return false
+
+	var config: AbilityData = melee_ability.data
+	var target_half_height: float = 16.0
+
+	# Use the player's actual hurtbox height when available.
+	if is_instance_valid(target.hurtbox):
+		if target.hurtbox.shape is RectangleShape2D:
+			target_half_height = target.hurtbox.shape.size.y * 0.5
+		elif target.hurtbox.shape is CircleShape2D:
+			target_half_height = target.hurtbox.shape.radius
+
+	# Determine the hitbox's vertical extent.
+	var hitbox_half_height: float = 0.0
+
+	if config.shape == "Circle":
+		hitbox_half_height = float(config.hitbox_scale)
+	elif config.shape == "Rectangle" and config.hitbox_scale is Vector2:
+		hitbox_half_height = config.hitbox_scale.y * 0.5
+	else:
+		return false
+
+	# Check each hitbox's vertical position.
+	var vertical_distance: float = (
+		target.global_position.y - global_position.y
+	)
+
+	for offset in config.hitbox_offsets:
+		if absf(vertical_distance - offset.y) <= (
+			hitbox_half_height + target_half_height
+		):
+			return true
+
+	return false
+
+
+## Checks whether the equipped ability can reach the target.
+func _can_attack_target() -> bool:
+	if not is_instance_valid(target):
+		return false
+
+	var config: AbilityData = melee_ability.data
+
+	var distance: float = global_position.distance_to(
+		target.global_position
+	)
+
+	if distance > config.get_ai_attack_range():
+		return false
+
+	# Projectile abilities use their ballistic trajectory.
+	if config is ProjectileData:
+		var target_half_height: float = 16.0
+
+		if is_instance_valid(target.hurtbox):
+			if target.hurtbox.shape is RectangleShape2D:
+				target_half_height = target.hurtbox.shape.size.y * 0.5
+			elif target.hurtbox.shape is CircleShape2D:
+				target_half_height = target.hurtbox.shape.radius
+
+		return config.can_hit_target(
+			global_position,
+			target.global_position,
+			target_half_height
+		)
+
+	# Melee abilities use their hitbox height.
+	return _is_target_in_attack_height()
+
+
 ## Sets the enemy's current traversal state.
 func _set_traversal_mode(mode: TraversalMode) -> void:
 	traversal_mode = mode
@@ -93,8 +180,12 @@ func _ready() -> void:
 		[BaseStats.Faction.PLAYER]
 	)
 
-	# Create the ability and attach it to the enemy.
-	melee_ability = Ability.new("EnemyAttack", config)
+	# Create the appropriate ability type from its configuration.
+	if config is ProjectileData:
+		melee_ability = RangedAbility.new("EnemyAttack", config)
+	else:
+		melee_ability = Ability.new("EnemyAttack", config)
+
 	add_child(melee_ability)
 
 
@@ -129,7 +220,56 @@ func _physics_process(delta: float) -> void:
 	var distance = global_position.distance_to(target.global_position)
 	var direction = target.global_position.x - global_position.x
 
-	if _is_traversing_platforms():
+	# Determine attack range from the equipped ability.
+	var ability_range: float = melee_ability.data.get_ai_attack_range()
+
+	if behavior_type == BehaviorType.TURRET:
+		# Turrets remain stationary and never pursue targets.
+		velocity.x = 0.0
+
+		# Attack only when the player is detected and
+		# the equipped ability can actually reach them.
+		if distance <= detection_range and _can_attack_target():
+			var facing: int = 1 if direction >= 0.0 else -1
+			melee_ability.use_ability(self, facing)
+
+	elif behavior_type == BehaviorType.RANGED and not _is_traversing_platforms():
+		var preferred_distance: float = (
+			ability_range * preferred_range_ratio
+		)
+		var retreat_distance: float = (
+			preferred_distance * retreat_range_ratio
+		)
+
+		var can_attack: bool = _can_attack_target()
+
+		if distance > detection_range:
+			# Ignore players outside detection range.
+			velocity.x = 0.0
+
+		elif not can_attack:
+			# A valid attack takes priority over preferred
+			# distance. Navigate until we can hit the player.
+			pursue_target()
+
+		elif distance < retreat_distance:
+			# We can attack, but the player is too close.
+			velocity.x = -signf(direction) * move_speed
+
+		elif distance > preferred_distance:
+			# Move closer to our preferred firing distance.
+			velocity.x = signf(direction) * move_speed
+
+		else:
+			# We're at a useful firing position.
+			velocity.x = 0.0
+
+		# Fire whenever the ability has a viable attack.
+		if distance <= detection_range and can_attack:
+			var facing: int = 1 if direction >= 0.0 else -1
+			melee_ability.use_ability(self, facing)
+
+	elif _is_traversing_platforms():
 		# Finish an active jump before returning to combat decisions.
 		follow_navigation_steps()
 
@@ -137,30 +277,8 @@ func _physics_process(delta: float) -> void:
 		# Player is too far away. Stay idle.
 		velocity.x = 0.0
 
-	elif distance > attack_range:
-		if terrain_navigation == null:
-			# No navigation system available.
-			# Fall back to direct movement.
-			velocity.x = signf(direction) * move_speed
-		else:
-			# Recalculate only when the timer expires.
-			# An unreachable target can produce an empty route,
-			# so an empty route alone must not trigger a retry.
-			if repath_timer <= 0.0:
-				path_request_count += 1
-
-				navigation_steps = terrain_navigation.get_navigation_steps(
-					global_position,
-					target.global_position,
-					can_jump,
-					float(move_speed),
-					jump_height
-				)
-				navigation_step_index = 0
-				repath_timer = repath_interval
-
-			# Follow the automatically generated instructions.
-			follow_navigation_steps()
+	elif not _can_attack_target():
+		pursue_target()
 
 	else:
 		# Player is within attack range.
@@ -205,6 +323,59 @@ func _physics_process(delta: float) -> void:
 
 	# Let BaseEnemy handle gravity and move_and_slide().
 	super._physics_process(delta)
+
+
+## Pursue the player using the room's navigation system.
+## Shared by Chaser and Ranged behaviors.
+func pursue_target() -> void:
+	if not is_instance_valid(target):
+		velocity.x = 0.0
+		return
+
+	if terrain_navigation == null:
+		# Fall back to direct movement when navigation
+		# is unavailable.
+		velocity.x = signf(
+			target.global_position.x - global_position.x
+		) * move_speed
+		return
+
+	# Recalculate only when the timer expires.
+	if repath_timer <= 0.0:
+		path_request_count += 1
+
+		navigation_steps = terrain_navigation.get_navigation_steps(
+			global_position,
+			target.global_position,
+			can_jump,
+			float(move_speed),
+			jump_height
+		)
+
+		navigation_step_index = 0
+		repath_timer = repath_interval
+
+		_debug_log(str(
+			"Ranged navigation | Behavior: ", behavior_type,
+			" | Position: ", global_position,
+			" | Player: ", target.global_position,
+			" | Path steps: ", navigation_steps.size(),
+			" | Can attack: ", _can_attack_target()
+		))
+		
+		if debug_logging:
+			for i in range(navigation_steps.size()):
+				var step: Dictionary = navigation_steps[i]
+
+				_debug_log(str(
+					"  Step ", i,
+					" | Movement: ", step["movement"],
+					" | Position: ", step["position"]
+				))
+
+
+
+	follow_navigation_steps()
 
 
 ## Follows automatically generated walking and jumping instructions.
@@ -261,6 +432,7 @@ func follow_navigation_steps() -> void:
 				_debug_log("Jump missed landing. Recalculating route.")
 				navigation_steps.clear()
 				navigation_step_index = 0
+				repath_timer = 0.0
 
 		return
 
