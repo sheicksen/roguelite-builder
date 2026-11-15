@@ -168,7 +168,7 @@ func rebuild_navigation() -> void:
 		for horizontal_offset in [-4, -3, -2, -1, 1, 2, 3, 4]:
 
 			# Look for platforms one or two tiles higher.
-			for rise in [1, 2]:
+			for rise in [1, 2, 3]:
 				var landing_cell: Vector2i = (
 					cell + Vector2i(horizontal_offset, -rise)
 				)
@@ -505,6 +505,7 @@ func estimate_jump_landing_time(
 ## Checks whether the enemy would overlap solid terrain
 ## at a given world position.
 func is_position_blocked(world_position: Vector2) -> bool:
+	# Include a small horizontal clearance margin.
 	var half_width: float = debug_enemy_half_width - 0.5
 	var half_height: float = enemy_half_height - 0.5
 
@@ -704,6 +705,23 @@ func get_capability_graph(
 		# Downward movement uses drop connections.
 		if destination.y > start.y + 1.0:
 			continue
+
+		# An upward jump needs room to position the
+		# enemy outside the destination platform.
+		if destination.y < start.y - 1.0:
+			var away_from_platform: float = -signf(
+				destination.x - start.x
+			)
+
+			var safe_takeoff: Vector2 = start + Vector2(
+				away_from_platform * 4.0,
+				0.0
+			)
+
+			# Reject a jump if a wall prevents the enemy
+			# from reaching its required takeoff position.
+			if is_position_blocked(safe_takeoff):
+				continue
 
 		if not is_jump_arc_clear(
 			start,

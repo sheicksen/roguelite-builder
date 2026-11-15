@@ -311,10 +311,29 @@ func _physics_process(delta: float) -> void:
 		ground_ahead.position.x = signf(velocity.x) * 24.0
 		ground_ahead.force_raycast_update()
 
-
 		if not ground_ahead.is_colliding():
-			velocity.x = 0.0
-			
+			# Allow the enemy to approach an approved
+			# jump takeoff point near the platform edge.
+			var approaching_jump: bool = false
+
+			if navigation_step_index + 1 < navigation_steps.size():
+				var next_step: Dictionary = (
+					navigation_steps[navigation_step_index + 1]
+				)
+
+				if next_step["movement"] == "jump":
+					var takeoff: Vector2 = (
+						navigation_steps[navigation_step_index]["position"]
+					)
+
+					approaching_jump = (
+						absf(global_position.x - takeoff.x) <= 32.0
+						and velocity.x * (takeoff.x - global_position.x) > 0.0
+					)
+
+			if not approaching_jump:
+				velocity.x = 0.0
+
 	# Let BaseEnemy handle gravity and move_and_slide().
 	super._physics_process(delta)
 
@@ -391,8 +410,8 @@ func follow_navigation_steps() -> void:
 		var landing: Vector2 = navigation_steps[navigation_step_index]["position"]
 		var horizontal_distance: float = landing.x - global_position.x
 
-		# For upward jumps, wait until the enemy has
-		# risen above the landing platform.
+		# For upward jumps, wait until the enemy
+		# has risen above the landing platform.
 		if jump_is_upward and not jump_horizontal_unlocked:
 			if global_position.y <= landing.y - 1.0:
 				jump_horizontal_unlocked = true
@@ -524,10 +543,42 @@ func follow_navigation_steps() -> void:
 
 			return
 
-		# Move to the next walking waypoint.
-		if absf(global_position.x - waypoint.x) <= waypoint_tolerance:
+		# Approach jump takeoff points precisely.
+		var tolerance: float = waypoint_tolerance
+
+		if navigation_step_index + 1 < navigation_steps.size():
+			var next_step: Dictionary = (
+				navigation_steps[navigation_step_index + 1]
+			)
+
+			if next_step["movement"] == "jump":
+				tolerance = 2.0
+
+				# For upward jumps, move slightly away from
+				# the destination before launching.
+				if next_step["position"].y < waypoint.y:
+					var jump_direction: float = signf(
+						next_step["position"].x - waypoint.x
+					)
+
+					waypoint.x -= jump_direction * 4.0
+
+		var horizontal_distance: float = waypoint.x - global_position.x
+
+		if absf(horizontal_distance) <= tolerance:
 			navigation_step_index += 1
 			continue
+
+		# Slow down near the waypoint to prevent overshooting.
+		var delta: float = get_physics_process_delta_time()
+
+		velocity.x = signf(horizontal_distance) * minf(
+			move_speed,
+			absf(horizontal_distance) / delta
+		)
+
+		return
+
 
 		velocity.x = signf(
 			waypoint.x - global_position.x

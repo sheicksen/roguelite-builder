@@ -874,3 +874,149 @@ func test_turret_remains_stationary() -> void:
 		enemy.target == player,
 		"Turret should still detect the player."
 	)
+
+## Verify that an enemy can reach a raised solid platform
+## without repeatedly jumping into its underside.
+func test_enemy_navigates_around_solid_platform_edge() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Build a long lower floor.
+	for x in range(300, 315):
+		room.place_solid_tile(Vector2i(x, 300))
+
+	# Solid platform extending over the enemy's starting area.
+	for x in range(308, 313):
+		room.place_solid_tile(Vector2i(x, 297))
+
+	# Wall limits how far right the enemy can maneuver.
+	for y in range(295, 300):
+		room.place_solid_tile(Vector2i(314, y))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var lower_cell := Vector2i(312, 300)
+	var upper_cell := Vector2i(310, 297)
+
+	var lower_position: Vector2 = (
+		navigation.astar.get_point_position(
+			navigation.point_ids_by_cell[lower_cell]
+		)
+	)
+
+	var upper_position: Vector2 = (
+		navigation.astar.get_point_position(
+			navigation.point_ids_by_cell[upper_cell]
+		)
+	)
+
+	# Place a stationary player on the upper platform.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = upper_position + Vector2(0, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Create an enemy on the lower floor.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.move_speed = 150
+	enemy.jump_height = 200.0
+	enemy.can_jump = true
+	enemy.detection_range = 0.0
+
+	add_child_autofree(enemy)
+	enemy.global_position = lower_position + Vector2(0, -8)
+
+	# Allow the enemy to settle before pursuing.
+	var started_grounded: bool = false
+
+	for frame in range(30):
+		await get_tree().physics_frame
+
+		if enemy.is_on_floor():
+			started_grounded = true
+			break
+
+	assert_true(
+		started_grounded,
+		"Enemy should begin on the lower floor."
+	)
+
+	if not started_grounded:
+		return
+
+	# Begin pursuit and observe the physical movement.
+	enemy.detection_range = 500.0
+
+	# Inspect the route generated for this failing layout.
+	var route: Array[Dictionary] = navigation.get_navigation_steps(
+		enemy.global_position,
+		player.global_position,
+		enemy.can_jump,
+		float(enemy.move_speed),
+		enemy.jump_height
+	)
+
+	print("=== SOLID PLATFORM ROUTE ===")
+
+	for i in range(route.size()):
+		print(
+			"Step ", i,
+			" | Movement: ", route[i]["movement"],
+			" | Position: ", route[i]["position"]
+		)
+
+	print("============================")
+
+	var landed_above: bool = false
+	var jump_attempts: int = 0
+	var was_airborne: bool = false
+
+	for frame in range(360):
+		await get_tree().physics_frame
+
+		var airborne: bool = not enemy.is_on_floor()
+
+		if airborne and not was_airborne:
+			jump_attempts += 1
+
+		was_airborne = airborne
+
+		if (
+			enemy.is_on_floor()
+			and absf(
+				enemy.global_position.y - upper_position.y
+			) <= 4.0
+			and absf(
+				enemy.global_position.x - upper_position.x
+			) <= 96.0
+		):
+			landed_above = true
+			break
+
+	print(
+		"SOLID PLATFORM TEST | Position: ",
+		enemy.global_position,
+		" | Target: ", upper_position,
+		" | Jump attempts: ", jump_attempts,
+		" | Landed: ", landed_above
+	)
+
+	assert_true(
+		landed_above,
+		"Enemy should navigate onto the solid platform."
+	)
