@@ -25,8 +25,8 @@ var jump_timer: Timer
 var jumps_made: int = 0
 
 # Movement feel
-var jump_height: int = JUMP_VELOCITY
-var air_friction: int = 0
+@export var jump_height: float = -500.0
+@export var air_friction: int = 0
 
 var sprint_boost: int       # Amount speed is increased by when sprinting
 var sprinting = false       # Tracks if the character is currently sprinting

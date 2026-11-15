@@ -1344,3 +1344,88 @@ func test_enemy_physically_performs_long_jump() -> void:
 		landed_above,
 		"Enemy should land on the distant upper platform."
 	)
+
+## Verify patrol can be enabled or disabled per enemy.
+func test_patrol_toggle() -> void:
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	add_child_autofree(enemy)
+	enemy.set_physics_process(false)
+
+	# Patrol should be disabled by default.
+	assert_false(
+		enemy.enable_patrol,
+		"Patrol should be disabled by default."
+	)
+
+	# A disabled patrol should not move the enemy.
+	enemy.velocity.x = 0.0
+	enemy.patrol_or_idle()
+
+	assert_eq(
+		enemy.velocity.x,
+		0.0,
+		"Enemy should remain idle when patrol is disabled."
+	)
+
+	# Verify the setting can be enabled.
+	enemy.enable_patrol = true
+
+	assert_true(
+		enemy.enable_patrol,
+		"Patrol should be configurable per enemy."
+	)
+
+## Verify enemies wait before resuming patrol
+## after losing track of the player.
+func test_patrol_resume_delay() -> void:
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	add_child_autofree(enemy)
+	enemy.set_physics_process(false)
+
+	enemy.enable_patrol = true
+	enemy.patrol_resume_delay = 1.5
+
+	# Detecting the player resets the countdown.
+	enemy.update_patrol_delay(0.1, true)
+
+	assert_almost_eq(
+		enemy.patrol_wait_remaining,
+		1.5,
+		0.01,
+		"Detecting the player should reset the patrol delay."
+	)
+
+	# After losing the player, wait one second.
+	enemy.update_patrol_delay(1.0, false)
+
+	assert_almost_eq(
+		enemy.patrol_wait_remaining,
+		0.5,
+		0.01,
+		"Patrol should still be waiting after one second."
+	)
+
+	# Finish the remaining delay.
+	enemy.update_patrol_delay(0.5, false)
+
+	assert_almost_eq(
+		enemy.patrol_wait_remaining,
+		0.0,
+		0.01,
+		"Patrol delay should finish after 1.5 seconds."
+	)
+
+	# The timer should never become negative.
+	enemy.update_patrol_delay(1.0, false)
+
+	assert_eq(
+		enemy.patrol_wait_remaining,
+		0.0,
+		"Patrol timer should not become negative."
+	)

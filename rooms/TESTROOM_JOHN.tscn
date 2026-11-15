@@ -4,38 +4,55 @@
 [ext_resource type="PackedScene" uid="uid://b7wjyw5dktcyk" path="res://scenes/Player.tscn" id="1_oi1ia"]
 [ext_resource type="PackedScene" uid="uid://kwq487vly70s" path="res://scenes/Enemy.tscn" id="3_4cexc"]
 [ext_resource type="Script" uid="uid://cnjhcwifk2lqk" path="res://scripts/ability_configs/knife_config.gd" id="4_dng0i"]
+[ext_resource type="Script" uid="uid://c2dg2u528i4mv" path="res://scripts/ability_configs/poisongun_config.gd" id="4_uhxue"]
 
-[sub_resource type="Resource" id="Resource_dng0i"]
+[sub_resource type="Resource" id="Resource_ljsle"]
 script = ExtResource("4_dng0i")
 metadata/_custom_type_script = "uid://cnjhcwifk2lqk"
 
-[sub_resource type="Resource" id="Resource_uhxue"]
-script = ExtResource("4_dng0i")
-metadata/_custom_type_script = "uid://cnjhcwifk2lqk"
+[sub_resource type="Resource" id="Resource_oi1ia"]
+script = ExtResource("4_uhxue")
+metadata/_custom_type_script = "uid://c2dg2u528i4mv"
 
 [node name="TestRoom" type="Node2D" unique_id=1034884043]
 
 [node name="EditableRoom" parent="." unique_id=513866417 instance=ExtResource("1_7mtnh")]
 
 [node name="SolidTerrain" parent="EditableRoom" index="0" unique_id=1983141028]
-tile_map_data = PackedByteArray("AAARAAoAAAAAAAAAAAAQAAoAAAAAAAAAAAAPAAoAAAAAAAAAAAAOAAoAAAAAAAAAAAASAAoAAAAAAAAAAAATAAoAAAAAAAAAAAAUAAoAAAAAAAAAAAAVAAoAAAAAAAAAAAAWAAoAAAAAAAAAAAAXAAoAAAAAAAAAAAAYAAoAAAAAAAAAAAAZAAoAAAAAAAAAAAAaAAoAAAAAAAAAAAAbAAoAAAAAAAAAAAAcAAoAAAAAAAAAAAAdAAoAAAAAAAAAAAANAAsAAAAAAAAAAAAMAAsAAAAAAAAAAAALAAsAAAAAAAAAAAAKAAsAAAAAAAAAAAAJAAsAAAAAAAAAAAAIAAsAAAAAAAAAAAAHAAsAAAAAAAAAAAAGAAsAAAAAAAAAAAAFAAsAAAAAAAAAAAAEAAsAAAAAAAAAAAADAAsAAAAAAAAAAAACAAsAAAAAAAAAAAABAAsAAAAAAAAAAAAAAAsAAAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAAbAAkABAAAAAAAAAAbAAgABAAAAAAAAAAbAAcABAAAAAAAAAAbAAYABAAAAAAAAAAbAAUABAAAAAAAAAAbAAQABAAAAAAAAAAbAAMABAAAAAAAAAAbAAIABAAAAAAAAAAbAAEABAAAAAAAAAAbAAAABAAAAAAAAAD8/wkABAAAAAAAAAD8/wgABAAAAAAAAAD8/wcABAAAAAAAAAD8/wYABAAAAAAAAAD8/wUABAAAAAAAAAD8/wQABAAAAAAAAAD8/wMABAAAAAAAAAD8/wIABAAAAAAAAAD8/wEABAAAAAAAAAD8/wAABAAAAAAAAAD8////BAAAAAAAAAD8//7/BAAAAAAAAAD8//3/BAAAAAAAAAD8//z/BAAAAAAAAAD8//v/BAAAAAAAAAD9//v/BAAAAAAAAAD+//v/BAAAAAAAAAD///v/BAAAAAAAAAAAAPv/BAAAAAAAAAABAPv/BAAAAAAAAAACAPv/BAAAAAAAAAADAPv/BAAAAAAAAAAEAPv/BAAAAAAAAAAFAPv/BAAAAAAAAAAGAPv/BAAAAAAAAAAHAPv/BAAAAAAAAAAIAPv/BAAAAAAAAAAJAPv/BAAAAAAAAAAKAPv/BAAAAAAAAAALAPv/BAAAAAAAAAAMAPv/BAAAAAAAAAANAPv/BAAAAAAAAAAOAPv/BAAAAAAAAAAPAPv/BAAAAAAAAAAQAPv/BAAAAAAAAAARAPv/BAAAAAAAAAASAPv/BAAAAAAAAAATAPv/BAAAAAAAAAAUAPv/BAAAAAAAAAAVAPv/BAAAAAAAAAAWAPv/BAAAAAAAAAAXAPv/BAAAAAAAAAAYAPv/BAAAAAAAAAAZAPv/BAAAAAAAAAAaAPv/BAAAAAAAAAAbAPv/BAAAAAAAAAAbAPz/BAAAAAAAAAAbAP3/BAAAAAAAAAAbAP7/BAAAAAAAAAAbAP//BAAAAAAAAAAYAAgABAAAAAAAAAAXAAgABAAAAAAAAAAWAAgABAAAAAAAAAAVAAgABAAAAAAAAAAUAAgABAAAAAAAAAATAAUABAAAAAAAAAASAAUABAAAAAAAAAARAAUABAAAAAAAAAAQAAUABAAAAAAAAAAPAAUABAAAAAAAAAAOAAIABAAAAAAAAAANAAIABAAAAAAAAAAMAAIABAAAAAAAAAALAAIABAAAAAAAAAAKAAIABAAAAAAAAAAIAP//BAAAAAAAAAAHAP//BAAAAAAAAAAGAP//BAAAAAAAAAAFAP//BAAAAAAAAAAEAP//BAAAAAAAAAAJAP//BAAAAAAAAAD9////BAAAAAAAAAADAP//BAAAAAAAAAACAP//BAAAAAAAAAABAP//BAAAAAAAAAAPAAsABAAAAAAAAAAQAAsABAAAAAAAAAARAAsABAAAAAAAAAAOAAsABAAAAAAAAAANAAsABAAAAAAAAAAMAAsABAAAAAAAAAALAAsABAAAAAAAAAAJAAsABAAAAAAAAAAIAAsABAAAAAAAAAAHAAsABAAAAAAAAAAGAAsABAAAAAAAAAAFAAsABAAAAAAAAAAEAAsABAAAAAAAAAADAAsABAAAAAAAAAACAAsABAAAAAAAAAAKAAsABAAAAAAAAAABAAsABAAAAAAAAAAAAAsABAAAAAAAAAD//wsABAAAAAAAAAD+/wsABAAAAAAAAAD9/wsABAAAAAAAAAD8/wsABAAAAAAAAAD8/woABAAAAAAAAAASAAsABAAAAAAAAAATAAsABAAAAAAAAAAUAAsABAAAAAAAAAAVAAsABAAAAAAAAAAWAAsABAAAAAAAAAAYAAsABAAAAAAAAAAZAAsABAAAAAAAAAAaAAsABAAAAAAAAAAXAAsABAAAAAAAAAAbAAsABAAAAAAAAAAbAAoABAAAAAAAAAA=")
 
 [node name="Player" parent="." unique_id=1953412444 instance=ExtResource("1_oi1ia")]
 position = Vector2(518, 296)
 
-[node name="AgileChaser" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
-position = Vector2(338, 320)
-detection_range = 500.0
-equipped_ability = SubResource("Resource_dng0i")
+[node name="Chaser" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
+position = Vector2(331, 310)
+detection_range = 200.0
+enable_patrol = true
+equipped_ability = SubResource("Resource_ljsle")
+debug_logging = true
+max_health = 40
+move_speed = 150
+jump_height = 150.0
 can_jump = true
 
-[node name="HeavyChaser" parent="." unique_id=466231462 instance=ExtResource("3_4cexc")]
-position = Vector2(254, 320)
+[node name="Ranged" parent="." unique_id=1983292889 instance=ExtResource("3_4cexc")]
+position = Vector2(151, -51)
+behavior_type = 1
 detection_range = 500.0
-equipped_ability = SubResource("Resource_uhxue")
-move_speed = 10
-defense = 100
-jump_height = 16.0
+equipped_ability = SubResource("Resource_oi1ia")
+max_health = 40
+move_speed = 150
+jump_height = 150.0
+can_jump = true
+
+[node name="Turret" parent="." unique_id=141097979 instance=ExtResource("3_4cexc")]
+position = Vector2(-79, -49)
+behavior_type = 2
+detection_range = 500.0
+equipped_ability = SubResource("Resource_oi1ia")
+max_health = 10
+move_speed = 150
+jump_height = 150.0
 can_jump = true
 
 [editable path="EditableRoom"]

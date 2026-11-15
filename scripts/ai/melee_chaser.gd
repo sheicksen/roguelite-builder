@@ -13,6 +13,14 @@ enum BehaviorType {
 @export var behavior_type: BehaviorType = BehaviorType.CHASER
 @export var detection_range: float = 250.0
 
+@export_group("Patrol")
+@export var enable_patrol: bool = false
+@export var patrol_speed: float = 60.0
+@export_range(0.0, 5.0, 0.1)
+var patrol_resume_delay: float = 1.5
+var patrol_direction: float = 1.0
+var patrol_wait_remaining: float = 0.0
+
 ## Preferred distance as a fraction of ability range.
 ## 0.9 means the enemy tries to stay at 90% of its range.
 @export_range(0.1, 1.0, 0.05)
@@ -63,6 +71,58 @@ var path_request_count: int = 0
 func _debug_log(message: String) -> void:
 	if debug_logging:
 		print(message)
+
+## Track the delay before returning to patrol.
+func update_patrol_delay(
+	delta: float,
+	player_detected: bool
+) -> void:
+	if player_detected:
+		# Reset the delay while the player is detected.
+		patrol_wait_remaining = patrol_resume_delay
+	else:
+		patrol_wait_remaining = maxf(
+			patrol_wait_remaining - delta,
+			0.0
+		)
+
+
+## Patrol the current surface without jumping or dropping.
+func patrol_or_idle() -> void:
+	if (
+		not enable_patrol
+		or behavior_type == BehaviorType.TURRET
+		or patrol_wait_remaining > 0.0
+		or not is_on_floor()
+		or _is_traversing_platforms()
+	):
+		velocity.x = 0.0
+		return
+
+	# Turn around after hitting a wall.
+	if is_on_wall():
+		patrol_direction *= -1.0
+
+	# Check whether there is ground ahead.
+	ground_ahead.position.x = patrol_direction * 24.0
+	ground_ahead.force_raycast_update()
+
+	if not ground_ahead.is_colliding():
+		patrol_direction *= -1.0
+
+		# Check the opposite direction before moving.
+		ground_ahead.position.x = patrol_direction * 24.0
+		ground_ahead.force_raycast_update()
+
+		if not ground_ahead.is_colliding():
+			velocity.x = 0.0
+			return
+
+	# Patrol slower than normal pursuit.
+	velocity.x = patrol_direction * minf(
+		patrol_speed,
+		float(move_speed)
+	)
 
 
 ## Returns true while jumping or performing a controlled drop.
@@ -206,9 +266,19 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(target):
 		target = get_tree().get_first_node_in_group("player") as Player
 
-	# Stop moving if there's no player.
+	# Check whether the player is within detection range.
+	var player_detected: bool = (
+		is_instance_valid(target)
+		and global_position.distance_to(
+			target.global_position
+		) <= detection_range
+	)
+
+	update_patrol_delay(delta, player_detected)
+
+	# Patrol or remain idle when no player exists.
 	if target == null:
-		velocity.x = 0.0
+		patrol_or_idle()
 		super._physics_process(delta)
 		return
 
@@ -256,7 +326,7 @@ func _physics_process(delta: float) -> void:
 
 		if distance > detection_range:
 			# Ignore players outside detection range.
-			velocity.x = 0.0
+			patrol_or_idle()
 
 		elif not can_attack:
 			# A valid attack takes priority over preferred
@@ -285,7 +355,7 @@ func _physics_process(delta: float) -> void:
 
 	elif distance > detection_range:
 		# Player is too far away. Stay idle.
-		velocity.x = 0.0
+		patrol_or_idle()
 
 	elif not _can_attack_target():
 		pursue_target()

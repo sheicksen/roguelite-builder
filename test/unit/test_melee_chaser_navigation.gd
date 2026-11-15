@@ -1020,3 +1020,244 @@ func test_enemy_navigates_around_solid_platform_edge() -> void:
 		landed_above,
 		"Enemy should navigate onto the solid platform."
 	)
+
+## Verify an idle enemy patrols a flat platform
+## and reverses direction without falling off.
+func test_enemy_patrols_without_falling() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Create a five-tile-wide platform.
+	for x in range(350, 355):
+		room.place_solid_tile(Vector2i(x, 350))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var start_cell := Vector2i(352, 350)
+	var start_position: Vector2 = (
+		navigation.astar.get_point_position(
+			navigation.point_ids_by_cell[start_cell]
+		)
+	)
+
+	# Create a player far outside detection range.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = start_position + Vector2(1000, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Create the patrolling enemy.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.enable_patrol = true
+	enemy.patrol_speed = 60.0
+	enemy.detection_range = 100.0
+	enemy.patrol_direction = 1.0
+
+	add_child_autofree(enemy)
+	enemy.global_position = start_position + Vector2(0, -8)
+
+	# Allow the enemy to settle on the platform.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+	var moved_right: bool = false
+	var moved_left: bool = false
+	var fell_off: bool = false
+
+	var previous_x: float = enemy.global_position.x
+
+	# Observe movement for six seconds.
+	for frame in range(360):
+		await get_tree().physics_frame
+
+		var current_x: float = enemy.global_position.x
+
+		if current_x > previous_x + 0.1:
+			moved_right = true
+
+		if current_x < previous_x - 0.1:
+			moved_left = true
+
+		if enemy.global_position.y > start_position.y + 32.0:
+			fell_off = true
+			break
+
+		previous_x = current_x
+
+	assert_true(
+		moved_right,
+		"Enemy should patrol to the right."
+	)
+
+	assert_true(
+		moved_left,
+		"Enemy should reverse and patrol to the left."
+	)
+
+	assert_false(
+		fell_off,
+		"Enemy should not fall off the platform."
+	)
+
+	assert_false(
+		enemy.jump_in_progress or enemy.drop_in_progress,
+		"Patrolling should not trigger jumps or drops."
+	)
+
+## Verify that an enemy switches between patrolling,
+## pursuing the player, and waiting before patrolling again.
+func test_enemy_switches_between_patrol_and_pursuit() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Build a long, flat floor.
+	for x in range(400, 431):
+		room.place_solid_tile(Vector2i(x, 400))
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	navigation.rebuild_navigation()
+
+	var start_cell := Vector2i(415, 400)
+	var start_position: Vector2 = (
+		navigation.astar.get_point_position(
+			navigation.point_ids_by_cell[start_cell]
+		)
+	)
+
+	# Create a stationary player outside detection range.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.global_position = start_position + Vector2(1200, -7)
+	player.set_physics_process(false)
+	player.collision_layer = 0
+
+	# Create a patrolling Chaser.
+	var enemy: MeleeChaser = load(
+		"res://scenes/Enemy.tscn"
+	).instantiate()
+
+	enemy.enable_patrol = true
+	enemy.patrol_speed = 60.0
+	enemy.patrol_resume_delay = 1.5
+	enemy.patrol_direction = 1.0
+	enemy.detection_range = 200.0
+	enemy.move_speed = 150
+
+	add_child_autofree(enemy)
+	enemy.global_position = start_position + Vector2(0, -8)
+
+	# Allow the enemy to settle on the floor.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+	assert_true(
+		enemy.is_on_floor(),
+		"Enemy should begin on the floor."
+	)
+
+	# Phase 1: Patrol while the player is far away.
+	var patrolled: bool = false
+
+	for frame in range(15):
+		await get_tree().physics_frame
+
+		if enemy.velocity.x > 0.0:
+			patrolled = true
+
+	assert_true(
+		patrolled,
+		"Enemy should patrol when the player is far away."
+	)
+
+	# Phase 2: Move the player into detection range,
+	# behind the enemy's patrol direction.
+	player.global_position = enemy.global_position + Vector2(
+		-96.0,
+		-7.0
+	)
+
+	var pursued: bool = false
+
+	for frame in range(15):
+		await get_tree().physics_frame
+
+		# The enemy should turn left toward the player.
+		if enemy.velocity.x < 0.0:
+			pursued = true
+			break
+
+	assert_true(
+		pursued,
+		"Enemy should immediately pursue the detected player."
+	)
+
+	# Phase 3: Move the player out of detection range.
+	player.global_position = start_position + Vector2(1200, -7)
+
+	await get_tree().physics_frame
+
+	assert_almost_eq(
+		enemy.velocity.x,
+		0.0,
+		0.01,
+		"Enemy should stop after losing the player."
+	)
+
+	assert_true(
+		enemy.patrol_wait_remaining > 0.0,
+		"Enemy should begin its patrol resume delay."
+	)
+
+	# Verify the enemy remains stationary during the delay.
+	for frame in range(30):
+		await get_tree().physics_frame
+
+	assert_almost_eq(
+		enemy.velocity.x,
+		0.0,
+		0.01,
+		"Enemy should wait before resuming patrol."
+	)
+
+	# Phase 4: Wait for the delay to expire.
+	var resumed_patrol: bool = false
+
+	for frame in range(120):
+		await get_tree().physics_frame
+
+		if (
+			enemy.patrol_wait_remaining <= 0.0
+			and absf(enemy.velocity.x) > 0.1
+		):
+			resumed_patrol = true
+			break
+
+	assert_true(
+		resumed_patrol,
+		"Enemy should resume patrol after the delay."
+	)
