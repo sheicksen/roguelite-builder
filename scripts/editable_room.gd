@@ -243,7 +243,16 @@ func has_destructible_tile(cell: Vector2i) -> bool:
 
 
 func get_destructible_health(cell: Vector2i) -> int:
-	return int(_destructible_health.get(cell, 0))
+	# Nonexistent tiles have no health.
+	if not has_destructible_tile(cell):
+		return 0
+
+	# Tiles painted directly in Godot may not have
+	# received their initial health yet.
+	if not _destructible_health.has(cell):
+		_destructible_health[cell] = destructible_max_health
+
+	return int(_destructible_health[cell])
 
 
 ## Applies damage and returns true if the tile was destroyed.

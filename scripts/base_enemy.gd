@@ -14,6 +14,8 @@ extends CharacterBody2D
 @export_group("Movement")
 @export var jump_height: float = 64.0
 @export var can_jump: bool = false
+# Horizontal movement speed while jumping.
+@export var jump_move_speed: float = 150.0
 
 @export_group("Recovery")
 @export var health_recovery_rate: float = 0.0

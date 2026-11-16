@@ -57,8 +57,16 @@ var navigation_step_index: int = 0
 var jump_was_airborne: bool = false
 var jump_is_upward: bool = false
 var jump_horizontal_unlocked: bool = false
+# Horizontal speed for the currently active jump.
+var active_jump_speed: float = 0.0
 var drop_was_airborne: bool = false
 var drop_direction: float = 0.0
+
+# Tracks a vertical drop through a one-way platform.
+var drop_through_active: bool = false
+
+# World Y position where platform collision can be restored.
+var drop_through_restore_y: float = 0.0
 
 @export_range(0.2, 3.0, 0.1)
 var repath_interval: float = 0.75
@@ -262,6 +270,8 @@ func attack_target() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	update_vertical_drop()
+
 	# Find the player if we don't already have a valid target.
 	if not is_instance_valid(target):
 		target = get_tree().get_first_node_in_group("player") as Player
@@ -432,7 +442,8 @@ func pursue_target() -> void:
 			target.global_position,
 			can_jump,
 			float(move_speed),
-			jump_height
+			jump_height,
+			jump_move_speed
 		)
 
 		navigation_step_index = 0
@@ -464,8 +475,9 @@ func pursue_target() -> void:
 ## Follows automatically generated walking and jumping instructions.
 func follow_navigation_steps() -> void:
 	if navigation_steps.is_empty():
-		# No route was found.
-		velocity.x = 0.0
+	# No navigation route was found.
+	# Try direct pursuit if the player is at our height.
+		move_toward_player_after_route()
 		return
 
 	if navigation_step_index >= navigation_steps.size():
@@ -488,8 +500,13 @@ func follow_navigation_steps() -> void:
 				_debug_log("Cleared ledge. Moving horizontally.")
 
 		# Move sideways only after clearance.
-		if jump_horizontal_unlocked and absf(horizontal_distance) > waypoint_tolerance:
-			velocity.x = signf(horizontal_distance) * move_speed
+		if (
+			jump_horizontal_unlocked
+			and absf(horizontal_distance) > waypoint_tolerance
+		):
+			velocity.x = (
+				signf(horizontal_distance) * active_jump_speed
+			)
 		else:
 			velocity.x = 0.0
 
@@ -570,6 +587,13 @@ func follow_navigation_steps() -> void:
 		var step: Dictionary = navigation_steps[navigation_step_index]
 		var waypoint: Vector2 = step["position"]
 		var movement: String = step["movement"]
+		
+		# Drop directly through a one-way platform.
+		if movement == "drop_through":
+			if is_on_floor():
+				start_vertical_drop()
+
+			return
 
 		# Begin a controlled drop toward a lower platform.
 		if movement == "drop":
@@ -591,25 +615,45 @@ func follow_navigation_steps() -> void:
 		if movement == "jump":
 			velocity.x = 0.0
 
-			if try_jump():
+			# Read the trajectory chosen by navigation.
+			var selected_height: float = float(
+				step.get("jump_height", jump_height)
+			)
+
+			var selected_speed: float = float(
+				step.get("jump_speed", jump_move_speed)
+			)
+
+			if try_navigation_jump(selected_height):
 				_set_traversal_mode(TraversalMode.JUMP)
 				jump_was_airborne = false
 
-				# Determine whether the destination is higher.
-				jump_is_upward = waypoint.y < global_position.y - 1.0
+				active_jump_speed = selected_speed
 
-				# Same-height jumps can move sideways immediately.
-				# Upward jumps must first clear the ledge.
+				# Determine whether the destination is higher.
+				jump_is_upward = (
+					waypoint.y < global_position.y - 1.0
+				)
+
+				# Same-height jumps can move horizontally
+				# immediately. Upward jumps wait for clearance.
 				jump_horizontal_unlocked = not jump_is_upward
 
 				if jump_horizontal_unlocked:
 					velocity.x = signf(
 						waypoint.x - global_position.x
-					) * move_speed
+					) * active_jump_speed
 				else:
 					velocity.x = 0.0
 
-				_debug_log(str("Jump launched toward: ", waypoint))
+				_debug_log(str(
+					"Adaptive jump launched | Height: ",
+					selected_height,
+					" | Speed: ",
+					active_jump_speed,
+					" | Destination: ",
+					waypoint
+				))
 
 			return
 
@@ -675,6 +719,77 @@ func move_toward_player_after_route() -> void:
 	# Follow the player instead of stopping at a waypoint.
 	var direction: float = target.global_position.x - global_position.x
 	velocity.x = signf(direction) * move_speed
+
+
+## Performs a jump using the height chosen by navigation.
+func try_navigation_jump(requested_height: float) -> bool:
+	if not can_jump or not is_on_floor():
+		return false
+
+	# Never jump higher than this enemy's configured limit.
+	if requested_height <= 0.0 or requested_height > jump_height:
+		return false
+
+	var gravity: float = get_gravity().y
+
+	if gravity <= 0.0:
+		return false
+
+	# Match the trajectory used by TerrainNavigation.
+	velocity.y = -sqrt(
+		2.0 * gravity * requested_height
+	)
+
+	return true
+
+
+## Begins a vertical drop through a one-way platform.
+func start_vertical_drop() -> void:
+	if not is_on_floor():
+		return
+
+	# Ignore one-way platforms, but retain solid collisions.
+	set_collision_mask_value(2, false)
+
+	drop_through_active = true
+	drop_was_airborne = false
+	drop_direction = 0.0
+
+	_set_traversal_mode(TraversalMode.DROP)
+
+	# Determine when the enemy has fully cleared the platform.
+	var tile_height: float = float(
+		terrain_navigation.room.platforms.tile_set.tile_size.y
+	)
+
+	var enemy_half_height: float = (
+		terrain_navigation.enemy_half_height
+	)
+
+	drop_through_restore_y = (
+		global_position.y
+		+ tile_height
+		+ 2.0 * enemy_half_height
+		+ 2.0
+	)
+
+	# Begin falling vertically.
+	velocity.x = 0.0
+	velocity.y = 150.0
+
+	_debug_log("Beginning vertical platform drop.")
+
+
+## Restores platform collision after clearing the upper platform.
+func update_vertical_drop() -> void:
+	if not drop_through_active:
+		return
+
+	if global_position.y >= drop_through_restore_y:
+		set_collision_mask_value(2, true)
+		drop_through_active = false
+
+		_debug_log("Platform collision restored.")
 
 
 ## Invalidates the current route when terrain changes.

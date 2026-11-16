@@ -17,12 +17,15 @@ var stamina_recovery: float = 0.05
 var hurtbox: Hurtbox
 var abilities: Array[Ability] = []
 
-
 # Jump handling.
 var can_jump: bool = true
 var num_jumps: int = 1
 var jump_timer: Timer
 var jumps_made: int = 0
+
+# Platform drop-through settings.
+const DROP_THROUGH_TIME: float = 0.12
+var drop_through_timer: float = 0.0
 
 # Movement feel
 @export var jump_height: float = -500.0
@@ -105,10 +108,20 @@ func _physics_process(delta: float) -> void:
 			# print("Timer started")
 			jump_timer.call_deferred("start", JUMP_LENIENCY)
 		
-	# Handle jump.
+	# Restore platform collisions after the drop-through period.
+	if drop_through_timer > 0.0:
+		drop_through_timer -= delta
+
+	if drop_through_timer <= 0.0:
+		set_collision_mask_value(2, true)
+
+# Handle jumping or dropping through a platform.
 	if Input.is_action_just_pressed("jump") and can_jump:
-		if jumps_made < num_jumps:
-			# print("Jump made")
+
+		if Input.is_action_pressed("look_down") and is_on_floor():
+			drop_through_platform()
+
+		elif jumps_made < num_jumps:
 			jumps_made += 1
 			velocity.y = jump_height
 
@@ -154,8 +167,7 @@ func _process(_delta: float) -> void:
 			camera.offset.y += 5
 	elif camera.offset.y > 0:
 		camera.offset.y -= 5
-	
-	
+
 func disable_jump() -> void:
 	if jumps_made >= num_jumps - 1:
 		can_jump = false
@@ -207,4 +219,14 @@ func toggle_crouch() -> void:
 	else:
 		crouching = true
 		$PlayerCollider.scale.y = 0.5
-		
+
+## Allows the player to fall through one-way platforms.
+func drop_through_platform() -> void:
+	# Temporarily ignore platform collision (Layer 2).
+	set_collision_mask_value(2, false)
+
+	# Begin the drop-through period.
+	drop_through_timer = DROP_THROUGH_TIME
+
+	# Push the player downward.
+	velocity.y = 150.0

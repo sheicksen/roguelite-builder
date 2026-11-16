@@ -1,10 +1,25 @@
 [gd_scene format=3 uid="uid://c25vdd20byqs5"]
 
 [ext_resource type="Script" uid="uid://seomdq5nluk4" path="res://scripts/editable_room.gd" id="1_3utn5"]
+[ext_resource type="Texture2D" uid="uid://bmlwe7tmq3vks" path="res://assets/terrain/Platform Tile.png" id="2_r3i7w"]
+[ext_resource type="Texture2D" uid="uid://hvfb81poy3cq" path="res://assets/terrain/Destructable.png" id="3_amf8m"]
 [ext_resource type="Script" uid="uid://bhjgui4be4wrm" path="res://scripts/terrain_editor_ui.gd" id="3_jd0ck"]
 [ext_resource type="Script" uid="uid://bjllbgn2nw3kx" path="res://scenes/tile_preview.gd" id="3_wwqfs"]
 [ext_resource type="Texture2D" uid="uid://dtgpbw4m76gyv" path="res://assets/terrain/Ground Tile.png" id="4_amf8m"]
 [ext_resource type="Script" uid="uid://uxn73wj2bt1g" path="res://scripts/ai/terrain_navigation.gd" id="4_fgmms"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_amf8m"]
+texture = ExtResource("2_r3i7w")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+0:0/0/physics_layer_0/polygon_0/one_way = true
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_q12vj"]
+texture = ExtResource("3_amf8m")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mf5b2"]
 texture = ExtResource("4_amf8m")
@@ -16,6 +31,34 @@ texture_region_size = Vector2i(32, 32)
 tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
 sources/4 = SubResource("TileSetAtlasSource_mf5b2")
+sources/1 = SubResource("TileSetAtlasSource_amf8m")
+sources/2 = SubResource("TileSetAtlasSource_q12vj")
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_wlx8g"]
+texture = ExtResource("2_r3i7w")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+0:0/0/physics_layer_0/polygon_0/one_way = true
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_a8sjc"]
+texture = ExtResource("3_amf8m")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_einvl"]
+texture = ExtResource("4_amf8m")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[sub_resource type="TileSet" id="TileSet_1ngwm"]
+tile_size = Vector2i(32, 32)
+physics_layer_0/collision_layer = 2
+sources/4 = SubResource("TileSetAtlasSource_einvl")
+sources/1 = SubResource("TileSetAtlasSource_wlx8g")
+sources/2 = SubResource("TileSetAtlasSource_a8sjc")
 
 [node name="EditableRoom" type="Node2D" unique_id=513866417]
 script = ExtResource("1_3utn5")
@@ -28,12 +71,13 @@ tile_set = SubResource("TileSet_gb0uo")
 script = ExtResource("3_wwqfs")
 
 [node name="Platforms" type="TileMapLayer" parent="." unique_id=787413604]
-tile_set = SubResource("TileSet_gb0uo")
+tile_set = SubResource("TileSet_1ngwm")
 
 [node name="DestructibleTerrain" type="TileMapLayer" parent="." unique_id=1273921636]
 tile_set = SubResource("TileSet_gb0uo")
 
 [node name="HiddenPassages" type="TileMapLayer" parent="." unique_id=1471916439]
+z_index = 2
 tile_set = SubResource("TileSet_gb0uo")
 collision_enabled = false
 navigation_enabled = false
