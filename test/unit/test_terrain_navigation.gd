@@ -1429,3 +1429,125 @@ func test_patrol_resume_delay() -> void:
 		0.0,
 		"Patrol timer should not become negative."
 	)
+
+
+## Verify navigation chooses a shorter jump beneath a ceiling.
+func test_adaptive_jump_avoids_low_ceiling() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	var navigation: TerrainNavigation = room.get_node(
+		"TerrainNavigation"
+	) as TerrainNavigation
+
+	# Create two standing surfaces separated by 96 pixels.
+	var start_cell := Vector2i(270, 270)
+	var landing_cell := Vector2i(273, 270)
+
+	room.place_solid_tile(start_cell)
+	room.place_solid_tile(landing_cell)
+
+	# Create a low ceiling over the gap.
+	# A full-height jump should collide with this ceiling.
+	for x in range(270, 274):
+		room.place_solid_tile(Vector2i(x, 266))
+
+	navigation.rebuild_navigation()
+
+	# Get the standing positions for the jump.
+	var start: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[start_cell]
+	)
+
+	var destination: Vector2 = navigation.astar.get_point_position(
+		navigation.point_ids_by_cell[landing_cell]
+	)
+
+	var gravity: float = float(
+		ProjectSettings.get_setting("physics/2d/default_gravity")
+	)
+
+	var jump_speed: float = 150.0
+	var max_jump_height: float = 150.0
+
+	# A full-height jump should hit the ceiling.
+	assert_false(
+		navigation.is_jump_arc_clear(
+			start,
+			destination,
+			gravity,
+			jump_speed,
+			max_jump_height
+		),
+		"Maximum-height jump should hit the ceiling."
+	)
+
+	# Adaptive navigation should find a shorter jump.
+	var selected_height: float = navigation.find_valid_jump_height(
+		start,
+		destination,
+		gravity,
+		jump_speed,
+		max_jump_height
+	)
+
+	assert_gt(
+		selected_height,
+		0.0,
+		"Navigation should find a valid short jump."
+	)
+
+	assert_lt(
+		selected_height,
+		max_jump_height,
+		"Selected jump should be shorter than maximum height."
+	)
+
+	# Verify the chosen trajectory is actually clear.
+	assert_true(
+		navigation.is_jump_arc_clear(
+			start,
+			destination,
+			gravity,
+			jump_speed,
+			selected_height
+		),
+		"Selected jump trajectory should clear the ceiling."
+	)
+
+	# Verify A* includes the chosen height and speed.
+	var route: Array[Dictionary] = navigation.get_navigation_steps(
+		start,
+		destination,
+		true,
+		125.0,
+		max_jump_height,
+		jump_speed
+	)
+
+	assert_eq(
+		route.size(),
+		2,
+		"Navigation should generate a route across the gap."
+	)
+
+	if route.size() == 2:
+		assert_eq(route[1]["movement"], "jump")
+
+		assert_almost_eq(
+			float(route[1]["jump_height"]),
+			selected_height,
+			0.01,
+			"Route should use the validated jump height."
+		)
+
+		assert_almost_eq(
+			float(route[1]["jump_speed"]),
+			jump_speed,
+			0.01,
+			"Route should use the validated horizontal speed."
+		)

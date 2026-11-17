@@ -85,8 +85,6 @@ func _physics_process(delta: float) -> void:
 					hitbox.attack_effects.damage
 				)
 
-				print("Projectile hit destructible terrain!")
-
 		# Stop the projectile regardless of terrain type.
 		global_position = collision["position"]
 		queue_free()

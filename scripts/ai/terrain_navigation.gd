@@ -11,6 +11,7 @@ signal navigation_rebuilt
 @export var enemy_half_height: float = 16.0
 @export var debug_enemy_half_width: float = 16.0
 @export var debug_point_radius: float = 8.0
+@export var show_debug_visuals: bool = false
 
 @onready var room: EditableRoom = get_parent() as EditableRoom
 
@@ -474,6 +475,10 @@ func _connect_walking_connections(graph: AStar2D) -> int:
 
 ## Draw debug markers at generated standing positions.
 func _draw() -> void:
+	if not show_debug_visuals:
+		return
+
+	# Existing drawing code below...
 	# Draw walking connections as green lines.
 	for point_id in astar.get_point_ids():
 		var start_position: Vector2 = astar.get_point_position(point_id)
@@ -1269,76 +1274,7 @@ func get_navigation_steps(
 		)
 
 		print("--- END NAVIGATION DEBUG ---")
-		# Diagnose the missing connection near the corridor.
-		var point_a: Vector2 = Vector2(784.0, -48.0)
-		var point_b: Vector2 = Vector2(880.0, -48.0)
 
-		var id_a: int = path_graph.get_closest_point(point_a)
-		var id_b: int = path_graph.get_closest_point(point_b)
-
-		if id_a != -1 and id_b != -1:
-			var forward := Vector2i(id_a, id_b)
-			var backward := Vector2i(id_b, id_a)
-
-			var gravity: float = float(
-				ProjectSettings.get_setting(
-					"physics/2d/default_gravity"
-				)
-			)
-
-			print("--- MISSING JUMP DEBUG ---")
-
-			print("Point A: ", path_graph.get_point_position(id_a))
-			print("Point B: ", path_graph.get_point_position(id_b))
-
-			print(
-				"Jump candidate exists: ",
-				candidate_jumps.has(forward)
-				or candidate_jumps.has(backward)
-			)
-
-			print(
-				"Jump arc valid: ",
-				is_jump_arc_clear(
-					point_a,
-					point_b,
-					gravity,
-					move_speed,
-					jump_height
-				)
-			)
-			
-			# Test whether a shorter jump clears the ceiling.
-			print("--- SHORT JUMP TEST ---")
-
-			for test_height in [60.0, 64.0, 68.0, 72.0]:
-				var valid: bool = is_jump_arc_clear(
-					point_a,
-					point_b,
-					gravity,
-					150.0,
-					test_height
-				)
-
-				print(
-					"Jump height ",
-					test_height,
-					": ",
-					valid
-				)
-
-			print("--- END SHORT JUMP TEST ---")
-
-			print(
-				"Graph connection exists: ",
-				path_graph.are_points_connected(
-					id_a,
-					id_b,
-					false
-				)
-			)
-
-			print("--- END MISSING JUMP DEBUG ---")
 
 	# Retrieve the approved heights for this capability graph.
 	var chosen_heights: Dictionary = jump_heights_by_graph.get(

@@ -3,13 +3,13 @@ extends Area2D
 
 ## Connects the existing hitbox system to destructible tiles.
 
-var room: EditableRoom
+var room: Node2D
 var cell: Vector2i
 
 
 ## Sets up collision detection for one destructible tile.
 func configure(
-	target_room: EditableRoom,
+	target_room: Node2D,
 	target_cell: Vector2i,
 	tile_size: Vector2
 ) -> void:

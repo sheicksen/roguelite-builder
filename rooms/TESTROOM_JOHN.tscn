@@ -25,23 +25,19 @@ tile_map_data = PackedByteArray("AAAbAAkABAAAAAAAAAAbAAgABAAAAAAAAAAbAAcABAAAAAA
 tile_map_data = PackedByteArray("AAAYAAUAAQAAAAAAAAAXAAUAAQAAAAAAAAAYAAIAAQAAAAAAAAAXAAIAAQAAAAAAAAAYAP//AQAAAAAAAAAXAP//AQAAAAAAAAA=")
 
 [node name="DestructibleTerrain" parent="EditableRoom" index="2" unique_id=1273921636]
-tile_map_data = PackedByteArray("AAD8//7/BAAAAAAAAAD8//3/BAAAAAAAAAD8//z/BAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAD8//7/BAAAAAAAAAD8//3/BAAAAAAAAAD8//z/BAAAAAAAAAADAAgAAgAAAAAAAAADAAkAAgAAAAAAAAADAAoAAgAAAAAAAAA=")
 
 [node name="HiddenPassages" parent="EditableRoom" index="3" unique_id=1471916439]
 tile_map_data = PackedByteArray("AAAbAP7/BAAAAAAAAAAbAP3/BAAAAAAAAAAbAPz/BAAAAAAAAAA=")
 
-[node name="TerrainNavigation" parent="EditableRoom" index="4" unique_id=1007977907]
-debug_logging = true
-
 [node name="Player" parent="." unique_id=1953412444 instance=ExtResource("1_oi1ia")]
-position = Vector2(926, -61)
+position = Vector2(-9, 326)
 
 [node name="Chaser" parent="." unique_id=1081551853 instance=ExtResource("3_4cexc")]
 position = Vector2(767, 136)
 detection_range = 400.0
 enable_patrol = true
 equipped_ability = SubResource("Resource_ljsle")
-debug_logging = true
 max_health = 40
 move_speed = 125
 jump_height = 150.0

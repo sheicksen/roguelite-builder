@@ -72,6 +72,16 @@ func _init(
 	add_child(third_ability)
 	abilities.append(third_ability)
 
+		# Allow all player melee abilities to damage destructible terrain.
+	for ability in abilities:
+		if ability is RangedAbility:
+			continue
+
+		var targets = ability.data.stats.targets
+
+		if not targets.has(BaseStats.Faction.ENVIRONMENT):
+			targets.append(BaseStats.Faction.ENVIRONMENT)
+
 func _ready() -> void:
 	hurtbox = Hurtbox.new(stats, 0, $PlayerCollider.shape)
 	hurtbox.name = "Hurtbox"

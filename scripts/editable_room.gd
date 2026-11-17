@@ -10,21 +10,20 @@ signal terrain_changed
 # --- Tile Configuration ---
 
 @export_group("Solid Terrain")
-@export var solid_source_id: int = 0
+@export var solid_source_id: int = 4
 @export var solid_atlas_coords: Vector2i = Vector2i.ZERO
 
 @export_group("Platforms")
-@export var platform_source_id: int = 0
+@export var platform_source_id: int = 1
 @export var platform_atlas_coords: Vector2i = Vector2i.ZERO
-@export var platform_alternative_id: int = 1
+@export var platform_alternative_id: int = 0
 
 @export_group("Destructible Terrain")
 @export_range(1, 1000, 1)
 var destructible_max_health: int = 100
 
-@export var destructible_source_id: int = 0
+@export var destructible_source_id: int = 2
 @export var destructible_atlas_coords: Vector2i = Vector2i.ZERO
-
 
 @export_group("Editor")
 @export var edit_mode: bool = false
@@ -39,6 +38,11 @@ var selected_terrain: int = 0
 
 ## Initialize navigation after the room's terrain layers are ready.
 func _ready() -> void:
+	# Initialize destructible tiles painted directly in Godot.
+	for cell in destructible_terrain.get_used_cells():
+		_ensure_destructible_hurtbox(cell)
+
+	# Build navigation after terrain initialization.
 	var navigation: TerrainNavigation = $TerrainNavigation
 
 	if navigation != null:
@@ -188,21 +192,19 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 # --- Destructible Terrain ---
+## Ensures a destructible tile has health and a hurtbox.
+func _ensure_destructible_hurtbox(cell: Vector2i) -> void:
+	if not has_destructible_tile(cell):
+		return
 
-## Places a destructible tile with full health.
-func place_destructible_tile(cell: Vector2i) -> void:
-	remove_tile(cell)
+	# Don't create duplicate hurtboxes.
+	if _destructible_hurtboxes.has(cell):
+		return
 
-	destructible_terrain.set_cell(
-		cell,
-		destructible_source_id,
-		destructible_atlas_coords
-	)
+	# Initialize health if this tile was painted in Godot.
+	if not _destructible_health.has(cell):
+		_destructible_health[cell] = destructible_max_health
 
-	_destructible_health[cell] = destructible_max_health
-
-	# Each destructible cell needs its own hurtbox so attacks
-	# can damage individual tiles instead of the entire layer.
 	var hurtbox := TerrainHurtbox.new()
 
 	hurtbox.configure(
@@ -217,8 +219,23 @@ func place_destructible_tile(cell: Vector2i) -> void:
 	_destructible_hurtboxes[cell] = hurtbox
 
 
-## Removes both the tile and its stored health.
+## Places a destructible tile with full health.
+func place_destructible_tile(cell: Vector2i) -> void:
+	remove_tile(cell)
 
+	destructible_terrain.set_cell(
+		cell,
+		destructible_source_id,
+		destructible_atlas_coords
+	)
+
+	_destructible_health[cell] = destructible_max_health
+
+	# Give the newly placed tile its own hurtbox.
+	_ensure_destructible_hurtbox(cell)
+
+
+## Removes both the tile and its stored health.
 func remove_destructible_tile(cell: Vector2i) -> void:
 	# Check whether a tile actually exists before removing it.
 	var had_tile: bool = has_destructible_tile(cell)
