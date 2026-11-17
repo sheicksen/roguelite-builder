@@ -1,0 +1,78 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://bu6e5vh7s4xqq"]
+
+[ext_resource type="Texture2D" uid="uid://bsc3puu6i7op3" path="res://assets/roguelite_static_ability_sprites.png" id="1_oqxfm"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kdm4f"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_13obt"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(128, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_du7tx"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(0, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qjnh8"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xjfis"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(64, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a7ljl"]
+atlas = ExtResource("1_oqxfm")
+region = Rect2(64, 0, 64, 64)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kdm4f")
+}],
+"loop": 1,
+"name": &"big_slash",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_13obt")
+}],
+"loop": 1,
+"name": &"fire_ball",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_du7tx")
+}],
+"loop": 1,
+"name": &"jab",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qjnh8")
+}],
+"loop": 1,
+"name": &"laser",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xjfis")
+}],
+"loop": 1,
+"name": &"medium_slash",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a7ljl")
+}],
+"loop": 1,
+"name": &"poison_ball",
+"speed": 5.0
+}]

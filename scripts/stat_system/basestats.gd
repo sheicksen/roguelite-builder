@@ -17,4 +17,5 @@ enum Faction {  ## Enumeration of Factions
 var faction: int  ## Integer representation of Owner Faction
 var name: String  ## Owner Name
 func _init(_name:String = "Unknown", _faction: int = 0) -> void:
+	name = _name
 	faction = _faction

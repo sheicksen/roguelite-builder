@@ -5,6 +5,8 @@ class_name EntityStats extends BaseStats
 ## damage type vulnerabilities, damage type immunities, weight, and effects
 ##
 
+signal speed_changed(old_val, new_val)
+
 var max_health: int           ## Max health
 var health: int               ## Current health
 var speed: int                ## Current speed
@@ -70,9 +72,13 @@ func modify_max_health(new_max:int)->int:
 	return max_health
 	
 func modify_speed(amount: int) -> int:
-	speed = speed + amount
-	if speed < 0:
-		speed = 0
+	## Add or subtract from the entity's speed by some amount.
+	## speed will not be reduced below zero
+	var new_speed = speed + amount
+	if new_speed < 0:
+		new_speed = 0
+	emit_signal("speed_changed", speed, new_speed)
+	speed = new_speed
 	return speed
 	
 func reset_health() -> int:

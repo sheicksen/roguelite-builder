@@ -45,8 +45,9 @@ func _ready() -> void:
 			set_collision_layer_value(3, true)
 	
 func receive_hit(attack:AttackStats) -> void:
+	print("Hit taken")
 	var old_health = stats.health
-	stats.take_damage(attack.damage)
+	print(stats.take_damage(attack.damage))
 	if emit_signal:
 		health_changed.emit(old_health, stats.health)
 		
