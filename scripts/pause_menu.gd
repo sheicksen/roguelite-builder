@@ -30,7 +30,9 @@ func _on_resume_button_pressed() -> void:
 	toggle_pause()
 
 func _on_settings_button_pressed() -> void:
-	pass
+	var settings_scene = preload("res://settings.tscn").instantiate()
+	settings_scene.opened_from_pause = true  # Mark that it came from pause
+	get_tree().root.add_child(settings_scene)
 
 func _on_quit_button_pressed() -> void:
 	get_tree().paused = false

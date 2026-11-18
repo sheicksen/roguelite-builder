@@ -16,8 +16,7 @@ func _on_start_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://Room_01.tscn")
 
 func _on_settings_button_pressed() -> void:
-	# Placeholder
-	pass
+	get_tree().change_scene_to_file("res://settings.tscn")
 
 func _on_quit_button_pressed() -> void:
 	# Quits to desktop

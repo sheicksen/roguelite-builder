@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://7euegdwes8ji"]
+
+[node name="SettingsMenu" type="Node2D" unique_id=80379086]
+
+[node name="Control" type="Control" parent="." unique_id=127125395]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Background" type="ColorRect" parent="Control" unique_id=1505068558]
+layout_mode = 0
+offset_right = 1186.0
+offset_bottom = 655.0
+color = Color(0.5359625, 0.33037925, 0.8352878, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="Control" unique_id=558685932]
+layout_mode = 0
+offset_right = 1193.0
+offset_bottom = 656.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/CenterContainer" unique_id=652901191]
+custom_minimum_size = Vector2(1100, 650)
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Control/CenterContainer/VBoxContainer" unique_id=575605273]
+layout_mode = 2
+text = "Settings
+"
+
+[node name="ScrollContainer" type="VScrollBar" parent="Control/CenterContainer/VBoxContainer" unique_id=1997157995]
+custom_minimum_size = Vector2(1100, 500)
+layout_mode = 2
+
+[node name="ActionListContainer" type="VBoxContainer" parent="Control/CenterContainer/VBoxContainer/ScrollContainer" unique_id=776639232]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 26.0
+offset_right = 1090.0
+offset_bottom = 488.0
+
+[node name="ButtonRow" type="HBoxContainer" parent="Control/CenterContainer/VBoxContainer/ScrollContainer" unique_id=1389584015]
+layout_mode = 0
+offset_left = 26.0
+offset_top = 513.0
+offset_right = 1147.0
+offset_bottom = 581.0
+
+[node name="BackButton" type="Button" parent="Control/CenterContainer/VBoxContainer/ScrollContainer/ButtonRow" unique_id=1918729046]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Back"
+
+[node name="ResetButton" type="Button" parent="Control/CenterContainer/VBoxContainer/ScrollContainer/ButtonRow" unique_id=1129009870]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+offset_transform_position_ratio = Vector2(5, 0)
+text = "Reset to default"
