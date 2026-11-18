@@ -1,6 +1,7 @@
 class_name PoisonGunConfig extends ProjectileData
 
 func _init() -> void:
+	name = "Poison Gun"
 	stats = AttackStats.new(
 		20, 
 		BaseStats.DamageType.POISON, 
@@ -27,3 +28,5 @@ func _init() -> void:
 	gravity = 950
 	y_velocity = -200
 	piercing = false
+	
+	description = "A medium-ranged projectile based attack. Spew a glob of poison in the air that arcs down upon your enemies."

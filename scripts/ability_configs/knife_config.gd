@@ -1,6 +1,7 @@
 class_name KnifeConfig extends AbilityData
 
 func _init() -> void:
+	name = "Knife"
 	stats = AttackStats.new(10, 0, [BaseStats.Faction.ENEMY])
 	icon = ""
 	
@@ -18,3 +19,5 @@ func _init() -> void:
 	hitbox_count = 1
 	hitlog = true
 	hitbox_offsets = [Vector2(30, 0)]
+	
+	description = "A fast, short-range  melee attack. Clean and simple."
