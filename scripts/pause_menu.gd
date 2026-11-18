@@ -3,6 +3,7 @@ extends Control
 @onready var resume_button: Button = $CenterContainer/MenuContainer/ResumeButton
 @onready var settings_button: Button = $CenterContainer/MenuContainer/SettingsButton
 @onready var quit_button: Button = $CenterContainer/MenuContainer/QuitButton
+@onready var pause_ui_container: Control = $CenterContainer
 
 func _ready() -> void:
 	#hide menu
@@ -30,9 +31,13 @@ func _on_resume_button_pressed() -> void:
 	toggle_pause()
 
 func _on_settings_button_pressed() -> void:
+	pause_ui_container.visible = false
 	var settings_scene = preload("res://settings.tscn").instantiate()
-	settings_scene.opened_from_pause = true  # Mark that it came from pause
-	get_tree().root.add_child(settings_scene)
+	settings_scene.opened_from_pause = true
+	get_tree().current_scene.add_child(settings_scene)
+	await settings_scene.tree_exited
+	pause_ui_container.visible = true
+	get_tree().paused = false
 
 func _on_quit_button_pressed() -> void:
 	get_tree().paused = false

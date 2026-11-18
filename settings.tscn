@@ -1,12 +1,23 @@
 [gd_scene format=3 uid="uid://7euegdwes8ji"]
 
-[node name="SettingsMenu" type="Node2D" unique_id=80379086]
+[ext_resource type="Script" uid="uid://jid6xiwdua6n" path="res://scripts/stat_system/settings_menu.gd" id="1_x2hje"]
+
+[node name="SettingsMenu" type="Control" unique_id=1931745333]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_x2hje")
 
 [node name="Control" type="Control" parent="." unique_id=127125395]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Background" type="ColorRect" parent="Control" unique_id=1505068558]
 layout_mode = 0
@@ -29,7 +40,7 @@ text = "Settings
 "
 
 [node name="ScrollContainer" type="VScrollBar" parent="Control/CenterContainer/VBoxContainer" unique_id=1997157995]
-custom_minimum_size = Vector2(1100, 500)
+custom_minimum_size = Vector2(20, 500)
 layout_mode = 2
 
 [node name="ActionListContainer" type="VBoxContainer" parent="Control/CenterContainer/VBoxContainer/ScrollContainer" unique_id=776639232]
