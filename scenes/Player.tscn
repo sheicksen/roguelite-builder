@@ -111,6 +111,7 @@ animations = [{
 }]
 
 [node name="Player" type="CharacterBody2D" unique_id=1953412444]
+collision_mask = 3
 script = ExtResource("1_p0vlq")
 
 [node name="PlayerCollider" type="CollisionShape2D" parent="." unique_id=589505251]

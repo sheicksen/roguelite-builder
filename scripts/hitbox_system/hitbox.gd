@@ -51,7 +51,12 @@ func _on_area_entered(target: Area2D) -> void:
 	if not target.has_method("receive_hit"):
 		return
 	
-	var hurtbox_owner = target.get_parent()
+	# Track destructible tiles individually.
+	# Other hurtboxes continue using their entity parent.
+	var hurtbox_owner: Node = target.get_parent()
+
+	if target is TerrainHurtbox:
+		hurtbox_owner = target
 	if hit_log:
 		if hit_log.has_hit(hurtbox_owner):
 			return

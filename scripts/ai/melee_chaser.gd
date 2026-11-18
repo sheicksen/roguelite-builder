@@ -1,0 +1,809 @@
+class_name MeleeChaser
+extends BaseEnemy
+
+## Determines how the enemy positions itself
+## relative to its target.
+enum BehaviorType {
+	CHASER,
+	RANGED,
+	TURRET
+}
+
+@export_group("AI Behavior")
+@export var behavior_type: BehaviorType = BehaviorType.CHASER
+@export var detection_range: float = 250.0
+
+@export_group("Patrol")
+@export var enable_patrol: bool = false
+@export var patrol_speed: float = 60.0
+@export_range(0.0, 5.0, 0.1)
+var patrol_resume_delay: float = 1.5
+var patrol_direction: float = 1.0
+var patrol_wait_remaining: float = 0.0
+
+## Preferred distance as a fraction of ability range.
+## 0.9 means the enemy tries to stay at 90% of its range.
+@export_range(0.1, 1.0, 0.05)
+var preferred_range_ratio: float = 0.9
+
+## Retreat when closer than this fraction of preferred range.
+@export_range(0.1, 1.0, 0.05)
+var retreat_range_ratio: float = 0.65
+
+@export_group("Combat")
+@export var equipped_ability: AbilityData
+
+var target: Player
+var active_ability: Ability
+
+@onready var ground_ahead: RayCast2D = $GroundAhead
+
+@export_group("Pathfinding")
+@export var waypoint_tolerance: float = 12.0
+
+@export_group("Debug")
+@export var debug_logging: bool = false
+
+## Types of platform traversal the enemy can perform.
+enum TraversalMode {
+	NONE,
+	JUMP,
+	DROP
+}
+
+var terrain_navigation: TerrainNavigation
+var navigation_steps: Array[Dictionary] = []
+var navigation_step_index: int = 0
+var jump_was_airborne: bool = false
+var jump_is_upward: bool = false
+var jump_horizontal_unlocked: bool = false
+# Horizontal speed for the currently active jump.
+var active_jump_speed: float = 0.0
+var drop_was_airborne: bool = false
+var drop_direction: float = 0.0
+
+# Tracks a vertical drop through a one-way platform.
+var drop_through_active: bool = false
+
+# World Y position where platform collision can be restored.
+var drop_through_restore_y: float = 0.0
+
+@export_range(0.2, 3.0, 0.1)
+var repath_interval: float = 0.75
+var repath_timer: float = 0.0
+
+# Counts how often this enemy requests a navigation path.
+var path_request_count: int = 0
+
+## Prints AI navigation information only when debugging is enabled.
+func _debug_log(message: String) -> void:
+	if debug_logging:
+		print(message)
+
+## Track the delay before returning to patrol.
+func update_patrol_delay(
+	delta: float,
+	player_detected: bool
+) -> void:
+	if player_detected:
+		# Reset the delay while the player is detected.
+		patrol_wait_remaining = patrol_resume_delay
+	else:
+		patrol_wait_remaining = maxf(
+			patrol_wait_remaining - delta,
+			0.0
+		)
+
+
+## Patrol the current surface without jumping or dropping.
+func patrol_or_idle() -> void:
+	if (
+		not enable_patrol
+		or behavior_type == BehaviorType.TURRET
+		or patrol_wait_remaining > 0.0
+		or not is_on_floor()
+		or _is_traversing_platforms()
+	):
+		velocity.x = 0.0
+		return
+
+	# Turn around after hitting a wall.
+	if is_on_wall():
+		patrol_direction *= -1.0
+
+	# Check whether there is ground ahead.
+	ground_ahead.position.x = patrol_direction * 24.0
+	ground_ahead.force_raycast_update()
+
+	if not ground_ahead.is_colliding():
+		patrol_direction *= -1.0
+
+		# Check the opposite direction before moving.
+		ground_ahead.position.x = patrol_direction * 24.0
+		ground_ahead.force_raycast_update()
+
+		if not ground_ahead.is_colliding():
+			velocity.x = 0.0
+			return
+
+	# Patrol slower than normal pursuit.
+	velocity.x = patrol_direction * minf(
+		patrol_speed,
+		float(move_speed)
+	)
+
+
+## Returns true while jumping or performing a controlled drop.
+func _is_traversing_platforms() -> bool:
+	return traversal_mode != TraversalMode.NONE
+
+
+## Checks whether any ability hitbox overlaps
+## the player's vertical position.
+func _is_target_in_attack_height() -> bool:
+	if not is_instance_valid(target):
+		return false
+
+	var config: AbilityData = active_ability.data
+	var target_half_height: float = 16.0
+
+	# Use the player's actual hurtbox height when available.
+	if is_instance_valid(target.hurtbox):
+		if target.hurtbox.shape is RectangleShape2D:
+			target_half_height = target.hurtbox.shape.size.y * 0.5
+		elif target.hurtbox.shape is CircleShape2D:
+			target_half_height = target.hurtbox.shape.radius
+
+	# Determine the hitbox's vertical extent.
+	var hitbox_half_height: float = 0.0
+
+	if config.shape == "Circle":
+		hitbox_half_height = float(config.hitbox_scale)
+	elif config.shape == "Rectangle" and config.hitbox_scale is Vector2:
+		hitbox_half_height = config.hitbox_scale.y * 0.5
+	else:
+		return false
+
+	# Check each hitbox's vertical position.
+	var vertical_distance: float = (
+		target.global_position.y - global_position.y
+	)
+
+	for offset in config.hitbox_offsets:
+		if absf(vertical_distance - offset.y) <= (
+			hitbox_half_height + target_half_height
+		):
+			return true
+
+	return false
+
+
+## Checks whether the equipped ability can reach the target.
+func _can_attack_target() -> bool:
+	if not is_instance_valid(target):
+		return false
+
+	var config: AbilityData = active_ability.data
+
+	var distance: float = global_position.distance_to(
+		target.global_position
+	)
+
+	if distance > config.get_ai_attack_range():
+		return false
+
+	# Projectile abilities use their ballistic trajectory.
+	if config is ProjectileData:
+		var target_half_height: float = 16.0
+
+		if is_instance_valid(target.hurtbox):
+			if target.hurtbox.shape is RectangleShape2D:
+				target_half_height = target.hurtbox.shape.size.y * 0.5
+			elif target.hurtbox.shape is CircleShape2D:
+				target_half_height = target.hurtbox.shape.radius
+
+		return config.can_hit_target(
+			global_position,
+			target.global_position,
+			target_half_height
+		)
+
+	# Melee abilities use their hitbox height.
+	return _is_target_in_attack_height()
+
+
+## Sets the enemy's current traversal state.
+func _set_traversal_mode(mode: TraversalMode) -> void:
+	traversal_mode = mode
+
+
+# The enemy's current platform traversal state.
+var traversal_mode: TraversalMode = TraversalMode.NONE
+
+# Compatibility properties for existing code and tests.
+var jump_in_progress: bool:
+	get:
+		return traversal_mode == TraversalMode.JUMP
+
+var drop_in_progress: bool:
+	get:
+		return traversal_mode == TraversalMode.DROP
+
+
+func _ready() -> void:
+	super._ready()
+
+	# Default to a Knife if no ability is assigned.
+	var config: AbilityData = KnifeConfig.new()
+
+	# Use the configured ability if one is provided.
+	if equipped_ability != null:
+		config = equipped_ability.duplicate(false) as AbilityData
+
+	# Enemy attacks should target the player.
+	config.stats = AttackStats.new(
+		attack_damage,
+		attack_damage_type,
+		[BaseStats.Faction.PLAYER]
+	)
+
+	# Create the appropriate ability type from its configuration.
+	if config is ProjectileData:
+		active_ability = RangedAbility.new("EnemyAttack", config)
+	else:
+		active_ability = Ability.new("EnemyAttack", config)
+
+	add_child(active_ability)
+
+
+## Uses the equipped ability facing toward the player.
+func attack_target() -> void:
+	if not is_instance_valid(target):
+		return
+
+	var direction: float = (
+		target.global_position.x - global_position.x
+	)
+
+	var facing: int = 1 if direction >= 0.0 else -1
+	active_ability.use_ability(self, facing)
+
+
+func _physics_process(delta: float) -> void:
+	update_vertical_drop()
+
+	# Find the player if we don't already have a valid target.
+	if not is_instance_valid(target):
+		target = get_tree().get_first_node_in_group("player") as Player
+
+	# Check whether the player is within detection range.
+	var player_detected: bool = (
+		is_instance_valid(target)
+		and global_position.distance_to(
+			target.global_position
+		) <= detection_range
+	)
+
+	update_patrol_delay(delta, player_detected)
+
+	# Patrol or remain idle when no player exists.
+	if target == null:
+		patrol_or_idle()
+		super._physics_process(delta)
+		return
+
+	# Find the room's automatically generated navigation graph.
+	if not is_instance_valid(terrain_navigation):
+		terrain_navigation = get_tree().get_first_node_in_group(
+			"terrain_navigation"
+		) as TerrainNavigation
+
+		# Listen for changes to the room's navigation graph.
+		if is_instance_valid(terrain_navigation):
+			terrain_navigation.navigation_rebuilt.connect(
+				_on_navigation_rebuilt
+			)
+
+
+	# Count down until the next path recalculation.
+	repath_timer = maxf(repath_timer - delta, 0.0)
+
+	# Calculate distance and direction to the player.
+	var distance = global_position.distance_to(target.global_position)
+	var direction = target.global_position.x - global_position.x
+
+	# Determine attack range from the equipped ability.
+	var ability_range: float = active_ability.data.get_ai_attack_range()
+
+	if behavior_type == BehaviorType.TURRET:
+		# Turrets remain stationary and never pursue targets.
+		velocity.x = 0.0
+
+		# Attack only when the player is detected and
+		# the equipped ability can actually reach them.
+		if distance <= detection_range and _can_attack_target():
+			attack_target()
+
+	elif behavior_type == BehaviorType.RANGED and not _is_traversing_platforms():
+		var preferred_distance: float = (
+			ability_range * preferred_range_ratio
+		)
+		var retreat_distance: float = (
+			preferred_distance * retreat_range_ratio
+		)
+
+		var can_attack: bool = _can_attack_target()
+
+		if distance > detection_range:
+			# Ignore players outside detection range.
+			patrol_or_idle()
+
+		elif not can_attack:
+			# A valid attack takes priority over preferred
+			# distance. Navigate until we can hit the player.
+			pursue_target()
+
+		elif distance < retreat_distance:
+			# We can attack, but the player is too close.
+			velocity.x = -signf(direction) * move_speed
+
+		elif distance > preferred_distance:
+			# Move closer to our preferred firing distance.
+			velocity.x = signf(direction) * move_speed
+
+		else:
+			# We're at a useful firing position.
+			velocity.x = 0.0
+
+		# Fire whenever the ability has a viable attack.
+		if distance <= detection_range and can_attack:
+			attack_target()
+
+	elif _is_traversing_platforms():
+		# Finish an active jump before returning to combat decisions.
+		follow_navigation_steps()
+
+	elif distance > detection_range:
+		# Player is too far away. Stay idle.
+		patrol_or_idle()
+
+	elif not _can_attack_target():
+		pursue_target()
+
+	else:
+		# Player is within attack range.
+		velocity.x = 0.0
+
+		# Clear the completed route so we can pursue again
+		# if the player moves away.
+		navigation_steps.clear()
+		navigation_step_index = 0
+		attack_target()
+
+	# Prevent walking off platforms.
+	if (
+		is_on_floor()
+		and not _is_traversing_platforms()
+		and absf(velocity.x) > 0.0
+	):
+
+		# Check for ground in the direction of movement.
+		ground_ahead.position.x = signf(velocity.x) * 24.0
+		ground_ahead.force_raycast_update()
+
+		if not ground_ahead.is_colliding():
+			# Allow the enemy to approach an approved
+			# jump takeoff point near the platform edge.
+			var approaching_jump: bool = false
+
+			if navigation_step_index + 1 < navigation_steps.size():
+				var next_step: Dictionary = (
+					navigation_steps[navigation_step_index + 1]
+				)
+
+				if next_step["movement"] == "jump":
+					var takeoff: Vector2 = (
+						navigation_steps[navigation_step_index]["position"]
+					)
+
+					approaching_jump = (
+						absf(global_position.x - takeoff.x) <= 32.0
+						and velocity.x * (takeoff.x - global_position.x) > 0.0
+					)
+
+			if not approaching_jump:
+				velocity.x = 0.0
+
+	# Let BaseEnemy handle gravity and move_and_slide().
+	super._physics_process(delta)
+
+
+## Pursue the player using the room's navigation system.
+## Shared by Chaser and Ranged behaviors.
+func pursue_target() -> void:
+	if not is_instance_valid(target):
+		velocity.x = 0.0
+		return
+
+	if terrain_navigation == null:
+		# Fall back to direct movement when navigation
+		# is unavailable.
+		velocity.x = signf(
+			target.global_position.x - global_position.x
+		) * move_speed
+		return
+
+	# Recalculate only when the timer expires.
+	if repath_timer <= 0.0:
+		path_request_count += 1
+
+		navigation_steps = terrain_navigation.get_navigation_steps(
+			global_position,
+			target.global_position,
+			can_jump,
+			float(move_speed),
+			jump_height,
+			jump_move_speed
+		)
+
+		navigation_step_index = 0
+		repath_timer = repath_interval
+
+		_debug_log(str(
+			"Ranged navigation | Behavior: ", behavior_type,
+			" | Position: ", global_position,
+			" | Player: ", target.global_position,
+			" | Path steps: ", navigation_steps.size(),
+			" | Can attack: ", _can_attack_target()
+		))
+		
+		if debug_logging:
+			for i in range(navigation_steps.size()):
+				var step: Dictionary = navigation_steps[i]
+
+				_debug_log(str(
+					"  Step ", i,
+					" | Movement: ", step["movement"],
+					" | Position: ", step["position"]
+				))
+
+
+
+	follow_navigation_steps()
+
+
+## Follows automatically generated walking and jumping instructions.
+func follow_navigation_steps() -> void:
+	if navigation_steps.is_empty():
+	# No navigation route was found.
+	# Try direct pursuit if the player is at our height.
+		move_toward_player_after_route()
+		return
+
+	if navigation_step_index >= navigation_steps.size():
+		# We've completed the route, but may not have
+		# reached the player yet.
+		move_toward_player_after_route()
+		return
+
+
+	# Continue an active jump until the enemy lands.
+	if jump_in_progress:
+		var landing: Vector2 = navigation_steps[navigation_step_index]["position"]
+		var horizontal_distance: float = landing.x - global_position.x
+
+		# For upward jumps, wait until the enemy
+		# has risen above the landing platform.
+		if jump_is_upward and not jump_horizontal_unlocked:
+			if global_position.y <= landing.y - 1.0:
+				jump_horizontal_unlocked = true
+				_debug_log("Cleared ledge. Moving horizontally.")
+
+		# Move sideways only after clearance.
+		if (
+			jump_horizontal_unlocked
+			and absf(horizontal_distance) > waypoint_tolerance
+		):
+			velocity.x = (
+				signf(horizontal_distance) * active_jump_speed
+			)
+		else:
+			velocity.x = 0.0
+
+
+		# Make sure the enemy has actually left the floor.
+		if not is_on_floor():
+			jump_was_airborne = true
+
+		# Verify landing before advancing to the next waypoint.
+		elif jump_was_airborne:
+			_set_traversal_mode(TraversalMode.NONE)
+			jump_was_airborne = false
+			velocity.x = 0.0
+
+			if (
+				absf(horizontal_distance) <= waypoint_tolerance
+				and absf(global_position.y - landing.y) <= 16.0
+			):
+
+				_debug_log(str("Jump landed at: ", global_position))
+				navigation_step_index += 1
+			else:
+				_debug_log("Jump missed landing. Recalculating route.")
+				navigation_steps.clear()
+				navigation_step_index = 0
+				repath_timer = 0.0
+
+		return
+
+
+	# Continue a deliberate drop until landing.
+	if drop_in_progress:
+		var landing: Vector2 = navigation_steps[navigation_step_index]["position"]
+		var horizontal_distance: float = landing.x - global_position.x
+
+		# Remember when the enemy leaves its current platform.
+		if not is_on_floor():
+			drop_was_airborne = true
+
+		# Detect landing after the enemy has been airborne.
+		elif drop_was_airborne:
+			_set_traversal_mode(TraversalMode.NONE)
+			drop_was_airborne = false
+			velocity.x = 0.0
+
+			if (
+				absf(horizontal_distance) <= waypoint_tolerance
+				and absf(global_position.y - landing.y) <= 16.0
+			):
+				_debug_log(str("Drop landed at: ", global_position))
+				navigation_step_index += 1
+			else:
+				_debug_log("Drop missed landing. Recalculating route.")
+				navigation_steps.clear()
+				navigation_step_index = 0
+
+			repath_timer = 0.0
+			return
+
+		# Keep moving in the original direction until the
+		# enemy has completely left the upper platform.
+		# Do not apply waypoint tolerance while still grounded.
+		if not drop_was_airborne:
+			velocity.x = drop_direction * move_speed
+			return
+
+		# Once airborne, steer toward the landing position.
+		if absf(horizontal_distance) > waypoint_tolerance:
+			velocity.x = signf(horizontal_distance) * move_speed
+		else:
+			velocity.x = 0.0
+
+		return
+
+
+	# Process walking instructions or start a jump.
+	while navigation_step_index < navigation_steps.size():
+		var step: Dictionary = navigation_steps[navigation_step_index]
+		var waypoint: Vector2 = step["position"]
+		var movement: String = step["movement"]
+		
+		# Drop directly through a one-way platform.
+		if movement == "drop_through":
+			if is_on_floor():
+				start_vertical_drop()
+
+			return
+
+		# Begin a controlled drop toward a lower platform.
+		if movement == "drop":
+			_set_traversal_mode(TraversalMode.DROP)
+			drop_was_airborne = not is_on_floor()
+
+			# Remember the direction needed to leave the ledge.
+			drop_direction = signf(
+				waypoint.x - global_position.x
+			)
+
+			velocity.x = drop_direction * move_speed
+
+			_debug_log(str("Drop started toward: ", waypoint))
+			return
+
+
+		# Start jumping toward the landing waypoint.
+		if movement == "jump":
+			velocity.x = 0.0
+
+			# Read the trajectory chosen by navigation.
+			var selected_height: float = float(
+				step.get("jump_height", jump_height)
+			)
+
+			var selected_speed: float = float(
+				step.get("jump_speed", jump_move_speed)
+			)
+
+			if try_navigation_jump(selected_height):
+				_set_traversal_mode(TraversalMode.JUMP)
+				jump_was_airborne = false
+
+				active_jump_speed = selected_speed
+
+				# Determine whether the destination is higher.
+				jump_is_upward = (
+					waypoint.y < global_position.y - 1.0
+				)
+
+				# Same-height jumps can move horizontally
+				# immediately. Upward jumps wait for clearance.
+				jump_horizontal_unlocked = not jump_is_upward
+
+				if jump_horizontal_unlocked:
+					velocity.x = signf(
+						waypoint.x - global_position.x
+					) * active_jump_speed
+				else:
+					velocity.x = 0.0
+
+				_debug_log(str(
+					"Adaptive jump launched | Height: ",
+					selected_height,
+					" | Speed: ",
+					active_jump_speed,
+					" | Destination: ",
+					waypoint
+				))
+
+			return
+
+		# Approach jump takeoff points precisely.
+		var tolerance: float = waypoint_tolerance
+
+		if navigation_step_index + 1 < navigation_steps.size():
+			var next_step: Dictionary = (
+				navigation_steps[navigation_step_index + 1]
+			)
+
+			if next_step["movement"] == "jump":
+				tolerance = 2.0
+
+				# For upward jumps, move slightly away from
+				# the destination before launching.
+				if next_step["position"].y < waypoint.y:
+					var jump_direction: float = signf(
+						next_step["position"].x - waypoint.x
+					)
+
+					waypoint.x -= jump_direction * 4.0
+
+		var horizontal_distance: float = waypoint.x - global_position.x
+
+		if absf(horizontal_distance) <= tolerance:
+			navigation_step_index += 1
+			continue
+
+		# Slow down near the waypoint to prevent overshooting.
+		var delta: float = get_physics_process_delta_time()
+
+		velocity.x = signf(horizontal_distance) * minf(
+			move_speed,
+			absf(horizontal_distance) / delta
+		)
+
+		return
+
+
+		velocity.x = signf(
+			waypoint.x - global_position.x
+		) * move_speed
+
+		return
+
+	move_toward_player_after_route()
+
+
+## Move toward the player's actual position after completing
+## the navigation route.
+func move_toward_player_after_route() -> void:
+	if not is_instance_valid(target):
+		velocity.x = 0.0
+		return
+
+	# Only use direct movement when we're at approximately
+	# the same height as the player.
+	if absf(target.global_position.y - global_position.y) > 24.0:
+		velocity.x = 0.0
+		return
+
+	# Follow the player instead of stopping at a waypoint.
+	var direction: float = target.global_position.x - global_position.x
+	velocity.x = signf(direction) * move_speed
+
+
+## Performs a jump using the height chosen by navigation.
+func try_navigation_jump(requested_height: float) -> bool:
+	if not can_jump or not is_on_floor():
+		return false
+
+	# Never jump higher than this enemy's configured limit.
+	if requested_height <= 0.0 or requested_height > jump_height:
+		return false
+
+	var gravity: float = get_gravity().y
+
+	if gravity <= 0.0:
+		return false
+
+	# Match the trajectory used by TerrainNavigation.
+	velocity.y = -sqrt(
+		2.0 * gravity * requested_height
+	)
+
+	return true
+
+
+## Begins a vertical drop through a one-way platform.
+func start_vertical_drop() -> void:
+	if not is_on_floor():
+		return
+
+	# Ignore one-way platforms, but retain solid collisions.
+	set_collision_mask_value(2, false)
+
+	drop_through_active = true
+	drop_was_airborne = false
+	drop_direction = 0.0
+
+	_set_traversal_mode(TraversalMode.DROP)
+
+	# Determine when the enemy has fully cleared the platform.
+	var tile_height: float = float(
+		terrain_navigation.room.platforms.tile_set.tile_size.y
+	)
+
+	var enemy_half_height: float = (
+		terrain_navigation.enemy_half_height
+	)
+
+	drop_through_restore_y = (
+		global_position.y
+		+ tile_height
+		+ 2.0 * enemy_half_height
+		+ 2.0
+	)
+
+	# Begin falling vertically.
+	velocity.x = 0.0
+	velocity.y = 150.0
+
+	_debug_log("Beginning vertical platform drop.")
+
+
+## Restores platform collision after clearing the upper platform.
+func update_vertical_drop() -> void:
+	if not drop_through_active:
+		return
+
+	if global_position.y >= drop_through_restore_y:
+		set_collision_mask_value(2, true)
+		drop_through_active = false
+
+		_debug_log("Platform collision restored.")
+
+
+## Invalidates the current route when terrain changes.
+func _on_navigation_rebuilt() -> void:
+	# Request a fresh path on the next physics update.
+	repath_timer = 0.0
+
+	# Don't interrupt an enemy already in midair.
+	if _is_traversing_platforms():
+		return
+
+
+	# Discard the old path.
+	navigation_steps.clear()
+	navigation_step_index = 0
+
+	_debug_log("Navigation changed. Enemy will recalculate its route.")

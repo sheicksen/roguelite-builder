@@ -26,3 +26,32 @@ class_name AbilityData extends Resource
 @export var hitlog: bool = true # Use hitlog
 @export var do_emit_signal = false # Emit signal when hitbox contacts a target
 @export var hitbox_offsets: Array[Vector2] = [Vector2(10, 0)] # Vector of hitbox offsets
+
+## Optional AI attack range override.
+## When zero, melee range is calculated from hitbox geometry.
+@export var ai_attack_range: float = 0.0
+
+
+## Returns the approximate horizontal reach of this ability.
+func get_ai_attack_range() -> float:
+	if ai_attack_range > 0.0:
+		return ai_attack_range
+
+	# Determine how far the hitbox extends horizontally.
+	var half_width: float = 0.0
+
+	if shape == "Circle":
+		half_width = float(hitbox_scale)
+	elif shape == "Rectangle" and hitbox_scale is Vector2:
+		half_width = hitbox_scale.x * 0.5
+
+	# Include each hitbox's offset from the attacker.
+	var reach: float = 0.0
+
+	for offset in hitbox_offsets:
+		reach = maxf(
+			reach,
+			absf(offset.x) + half_width
+		)
+
+	return reach

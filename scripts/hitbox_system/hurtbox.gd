@@ -44,15 +44,16 @@ func _ready() -> void:
 		BaseStats.Faction.ENVIRONMENT:
 			set_collision_layer_value(3, true)
 	
-func receive_hit(attack:AttackStats) -> void:
-	print("Hit taken")
-	var old_health = stats.health
-	print(stats.take_damage(attack.damage))
+func receive_hit(attack: AttackStats) -> void:
+	var old_health: int = stats.health
+
+	# Apply incoming damage.
+	stats.take_damage(attack.damage)
+
+	# Notify listeners of health changes.
 	if emit_signal:
 		health_changed.emit(old_health, stats.health)
-		
+
+	# Remove this hurtbox when its entity dies, if configured.
 	if stats.health <= 0 and destroy_on_death:
 		queue_free()
-
-
-		

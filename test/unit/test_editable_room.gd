@@ -364,3 +364,220 @@ func test_save_and_restore_room_data() -> void:
 	assert_true(
 		room._destructible_hurtboxes.has(destructible_cell)
 	)
+
+
+## Verify newly placed terrain has valid physics collision.
+## Prevents incorrect TileSet source IDs from breaking movement.
+func test_placed_terrain_has_collision_shapes() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	add_child_autofree(room)
+
+	# Place each terrain type in a separate cell.
+	var solid_cell := Vector2i(50, 50)
+	var platform_cell := Vector2i(51, 50)
+	var destructible_cell := Vector2i(52, 50)
+
+	room.place_solid_tile(solid_cell)
+	room.place_platform_tile(platform_cell)
+	room.place_destructible_tile(destructible_cell)
+
+	# Check all three terrain types.
+	var terrain_checks: Array[Dictionary] = [
+		{
+			"layer": room.solid_terrain,
+			"cell": solid_cell
+		},
+		{
+			"layer": room.platforms,
+			"cell": platform_cell
+		},
+		{
+			"layer": room.destructible_terrain,
+			"cell": destructible_cell
+		}
+	]
+
+	for check in terrain_checks:
+		var layer: TileMapLayer = check["layer"]
+		var cell: Vector2i = check["cell"]
+
+		# Confirm the tile was actually placed.
+		assert_ne(
+			layer.get_cell_source_id(cell),
+			-1,
+			"Terrain should have a valid source ID."
+		)
+
+		# Retrieve the tile's physics configuration.
+		var tile_data: TileData = layer.get_cell_tile_data(cell)
+
+		assert_not_null(
+			tile_data,
+			"Terrain should have valid TileData."
+		)
+
+		if tile_data == null:
+			continue
+
+		# Physics layer 0 must contain a collision polygon.
+		assert_gt(
+			tile_data.get_collision_polygons_count(0),
+			0,
+			"Terrain should have a collision polygon."
+		)
+
+		assert_true(
+			layer.collision_enabled,
+			"Terrain collision should be enabled."
+		)
+
+	# Verify that terrain uses the correct physics layers.
+	assert_eq(
+		room.solid_terrain.tile_set.get_physics_layer_collision_layer(0),
+		1,
+		"Solid terrain should use collision layer 1."
+	)
+
+	assert_eq(
+		room.destructible_terrain.tile_set.get_physics_layer_collision_layer(0),
+		1,
+		"Destructible terrain should use collision layer 1."
+	)
+
+	assert_eq(
+		room.platforms.tile_set.get_physics_layer_collision_layer(0),
+		2,
+		"Platforms should use collision layer 2."
+	)
+
+
+## Verify a sword swing damages destructible terrain only once,
+## even though the ability creates multiple overlapping hitboxes.
+func test_player_sword_damages_destructible_once_per_swing() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	room.destructible_max_health = 100
+	add_child_autofree(room)
+
+	# Create a destructible tile.
+	var test_cell := Vector2i(80, 80)
+	room.place_destructible_tile(test_cell)
+
+	# Find the tile's position in world coordinates.
+	var tile_position: Vector2 = (
+		room.destructible_terrain.to_global(
+			room.destructible_terrain.map_to_local(test_cell)
+		)
+	)
+
+	# Create a player positioned to strike the tile.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.set_physics_process(false)
+
+	# The Sword's first hitbox is 30 pixels ahead.
+	player.global_position = tile_position - Vector2(30.0, 0.0)
+
+	# The third ability is the Sword.
+	var sword: Ability = player.abilities[2]
+
+	# Verify the Sword can target the environment.
+	assert_true(
+		sword.data.stats.targets.has(BaseStats.Faction.ENVIRONMENT),
+		"Sword should target destructible terrain."
+	)
+
+	# Perform one sword attack toward the tile.
+	sword.use_ability(player, 1)
+
+	# Allow physics to detect overlapping hitboxes.
+	for i in range(4):
+		await get_tree().physics_frame
+
+	# Allow deferred terrain damage to finish.
+	await get_tree().process_frame
+
+	# One swing should deal exactly 30 damage.
+	assert_eq(
+		room.get_destructible_health(test_cell),
+		70,
+		"Sword should damage each tile only once per swing."
+	)
+
+
+## Verify one Knife attack can damage multiple destructible tiles
+## without applying duplicate damage to either tile.
+func test_player_knife_damages_multiple_destructible_tiles() -> void:
+	var room: EditableRoom = load(
+		"res://scenes/EditableRoom.tscn"
+	).instantiate()
+
+	room.edit_mode = false
+	room.destructible_max_health = 100
+	add_child_autofree(room)
+
+	# Create two adjacent destructible tiles.
+	var cell_a := Vector2i(90, 90)
+	var cell_b := Vector2i(91, 90)
+
+	room.place_destructible_tile(cell_a)
+	room.place_destructible_tile(cell_b)
+
+	# Determine the first tile's world position.
+	var tile_position: Vector2 = (
+		room.destructible_terrain.to_global(
+			room.destructible_terrain.map_to_local(cell_a)
+		)
+	)
+
+	# Create a stationary player facing the tiles.
+	var player: Player = load(
+		"res://scenes/Player.tscn"
+	).instantiate()
+
+	add_child_autofree(player)
+	player.set_physics_process(false)
+
+	# The Knife has a 30-pixel offset and a
+	# 60-pixel-wide hitbox.
+	player.global_position = tile_position - Vector2(30.0, 0.0)
+
+	# The player's first ability is the Knife.
+	var knife: Ability = player.abilities[0]
+
+	assert_true(
+		knife.data.stats.targets.has(BaseStats.Faction.ENVIRONMENT),
+		"Knife should be able to damage destructible terrain."
+	)
+
+	# Perform one attack toward both tiles.
+	knife.use_ability(player, 1)
+
+	# Allow collision detection and deferred damage.
+	for i in range(4):
+		await get_tree().physics_frame
+
+	await get_tree().process_frame
+
+	# Both tiles should have taken exactly 10 damage.
+	assert_eq(
+		room.get_destructible_health(cell_a),
+		90,
+		"First tile should take 10 damage."
+	)
+
+	assert_eq(
+		room.get_destructible_health(cell_b),
+		90,
+		"Second tile should take 10 damage."
+	)

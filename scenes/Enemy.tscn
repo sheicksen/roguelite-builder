@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://kwq487vly70s"]
+
+[ext_resource type="Script" uid="uid://bfoirrpi6oy8a" path="res://scripts/ai/melee_chaser.gd" id="1_3gvst"]
+[ext_resource type="Texture2D" uid="uid://bxhlmftxonev8" path="res://assets/enemies/pixil-frame-0 (1).png" id="2_mpr68"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hhtpo"]
+size = Vector2(32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ly5gv"]
+atlas = ExtResource("2_mpr68")
+region = Rect2(6, 8, 58, 56)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_hhtpo"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ly5gv")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Enemy" type="CharacterBody2D" unique_id=1081551853]
+collision_layer = 8
+collision_mask = 3
+script = ExtResource("1_3gvst")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=676791160]
+shape = SubResource("RectangleShape2D_hhtpo")
+
+[node name="GroundAhead" type="RayCast2D" parent="." unique_id=808729300]
+target_position = Vector2(0, 42)
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1658698285]
+position = Vector2(0, -10)
+sprite_frames = SubResource("SpriteFrames_hhtpo")
+autoplay = "default"
